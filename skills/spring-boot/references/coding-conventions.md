@@ -49,6 +49,22 @@ Follow these coding standards when writing or modifying Java code in a Spring Bo
    - `@Getter`, `@Setter`, `@NoArgsConstructor` on entities
    - `@Data` on DTOs (but **never** on entities)
    - **Do NOT use Lombok's `@ToString`** — always override `toString()` manually with JSON output (see below)
+   - **NEVER write manual `get*()`/`set*()` methods** — always use `@Getter`/`@Setter` annotations. No exceptions.
+     - Class-level `@Getter`/`@Setter` for classes where all fields need accessors
+     - Field-level `@Getter`/`@Setter` when only specific fields need accessors
+     - Use `@Getter(AccessLevel.NONE)` to suppress Lombok's getter for a specific field if needed
+   ```java
+   // ❌ NEVER do this — manual getters/setters are banned
+   public String getName() { return name; }
+   public void setName(String name) { this.name = name; }
+
+   // ✅ Always use Lombok
+   @Getter
+   @Setter
+   public class User {
+       private String name;
+   }
+   ```
 
 6. **Use `final` for fields and parameters** where possible to signal immutability.
 

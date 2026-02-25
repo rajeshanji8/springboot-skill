@@ -1,6 +1,6 @@
 # Spring Boot Skill
 
-> A reusable AI coding skill for Spring Boot projects. Install into any project for any AI agent — Claude Code, Codex, Gemini CLI, Cursor.
+> A reusable AI coding skill for Spring Boot projects. Install into any project for any AI agent — Claude Code, Codex, Gemini CLI, Cursor, GitHub Copilot.
 
 ---
 
@@ -70,6 +70,7 @@ Copy the `skills/spring-boot` folder into the agent's skill directory:
 | Codex | `project/.codex/skills/spring-boot` | `~/.codex/skills/spring-boot` |
 | Gemini CLI | `project/.gemini/skills/spring-boot` | `~/.gemini/skills/spring-boot` |
 | Cursor | `project/.cursor/skills/spring-boot` | `~/.cursor/skills/spring-boot` |
+| GitHub Copilot | `project/.github/skills/spring-boot` | `~/.github/skills/spring-boot` |
 
 ---
 

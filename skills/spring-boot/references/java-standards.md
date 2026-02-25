@@ -228,10 +228,14 @@ Do **not** static-import ambiguous methods that could confuse readers.
 
 ## Collections
 
-1. **Return unmodifiable collections** from getters when the caller shouldn't modify them:
+1. **Return unmodifiable collections** — never expose mutable collections. Since manual getters are banned (use `@Getter`/`@Setter` — see [coding-conventions.md](coding-conventions.md)), make the collection itself unmodifiable at assignment time:
    ```java
-   public List<String> getRoles() {
-       return Collections.unmodifiableList(roles);
+   // ✅ Assign an unmodifiable copy — Lombok's @Getter returns it safely
+   @Getter
+   private List<String> roles = List.of();
+
+   public void assignRoles(List<String> newRoles) {
+       this.roles = List.copyOf(newRoles); // immutable copy
    }
    ```
 

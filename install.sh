@@ -5,7 +5,7 @@ set -Eeuo pipefail
 # ============================================================
 # springboot-skill installer
 # Installs skills into AI agent directories at project or user level
-# Supports: Claude Code, Codex, Gemini CLI, Cursor
+# Supports: Claude Code, Codex, Gemini CLI, Cursor, GitHub Copilot
 #
 # Works two ways:
 #   1. Local:  ./install.sh ~/projects/my-api
@@ -13,7 +13,7 @@ set -Eeuo pipefail
 # ============================================================
 
 GITHUB_REPO="https://github.com/rajeshanji8/springboot-skill.git"
-AI_AGENTS=("claude" "codex" "gemini" "cursor")
+AI_AGENTS=("claude" "codex" "gemini" "cursor" "copilot")
 INSTALL_LEVEL="project"
 SELECTED_AGENTS=()
 
@@ -27,7 +27,7 @@ Install springboot-skill for AI coding agents.
 OPTIONS:
   --project              Install at project level (default)
   --user                 Install at user level (~/.claude, ~/.codex, etc.)
-  --agent AGENT          Install for specific agent(s): claude, codex, gemini, cursor, or 'all'
+  --agent AGENT          Install for specific agent(s): claude, codex, gemini, cursor, copilot, or 'all'
                          Can be specified multiple times. Default: all agents
   --uninstall            Remove installed skill from agent directories
   -h, --help             Show this help message
@@ -73,10 +73,10 @@ while [[ $# -gt 0 ]]; do
       fi
       if [[ "$2" == "all" ]]; then
         SELECTED_AGENTS=("${AI_AGENTS[@]}")
-      elif [[ "$2" =~ ^(claude|codex|gemini|cursor)$ ]]; then
+      elif [[ "$2" =~ ^(claude|codex|gemini|cursor|copilot)$ ]]; then
         SELECTED_AGENTS+=("$2")
       else
-        echo "Error: Invalid agent '$2'. Must be one of: claude, codex, gemini, cursor, all"
+        echo "Error: Invalid agent '$2'. Must be one of: claude, codex, gemini, cursor, copilot, all"
         exit 1
       fi
       shift 2
@@ -164,11 +164,17 @@ fi
 echo "Agents: ${SELECTED_AGENTS[*]}"
 echo ""
 
+# Map agent name to its dot-directory (copilot uses .github)
+agent_dir_name() {
+  if [[ "$1" == "copilot" ]]; then echo ".github"; else echo ".$1"; fi
+}
+
 for agent in "${SELECTED_AGENTS[@]}"; do
+  DIR_NAME="$(agent_dir_name "$agent")"
   if [[ "${INSTALL_LEVEL}" == "user" ]]; then
-    AGENT_DIR="${HOME}/.${agent}"
+    AGENT_DIR="${HOME}/${DIR_NAME}"
   else
-    AGENT_DIR="${PROJECT_PATH}/.${agent}"
+    AGENT_DIR="${PROJECT_PATH}/${DIR_NAME}"
   fi
 
   SKILLS_DIR="${AGENT_DIR}/skills"

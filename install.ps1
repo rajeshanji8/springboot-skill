@@ -1,7 +1,7 @@
 # ============================================================
 # springboot-skill installer (PowerShell)
 # Installs skills into AI agent directories at project or user level
-# Supports: Claude Code, Codex, Gemini CLI, Cursor
+# Supports: Claude Code, Codex, Gemini CLI, Cursor, GitHub Copilot
 #
 # Works two ways:
 #   1. Local:  .\install.ps1 C:\projects\my-api
@@ -12,7 +12,7 @@ param(
     [Parameter(Position=0)]
     [string]$ProjectPath,
 
-    [ValidateSet("claude", "codex", "gemini", "cursor", "all")]
+    [ValidateSet("claude", "codex", "gemini", "cursor", "copilot", "all")]
     [string[]]$Agent,
 
     [switch]$User,
@@ -23,7 +23,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $GitHubRepo = "https://github.com/rajeshanji8/springboot-skill.git"
-$AllAgents = @("claude", "codex", "gemini", "cursor")
+$AllAgents = @("claude", "codex", "gemini", "cursor", "copilot")
 $CleanupTemp = $false
 $TempDir = $null
 
@@ -86,10 +86,13 @@ Write-Host "Agents: $($SelectedAgents -join ', ')"
 Write-Host ""
 
 foreach ($ag in $SelectedAgents) {
+    # copilot uses .github directory; others use .<agent>
+    $dirName = if ($ag -eq "copilot") { ".github" } else { ".$ag" }
+
     if ($User) {
-        $agentDir = Join-Path $env:USERPROFILE ".$ag"
+        $agentDir = Join-Path $env:USERPROFILE $dirName
     } else {
-        $agentDir = Join-Path $ProjectPath ".$ag"
+        $agentDir = Join-Path $ProjectPath $dirName
     }
 
     $skillsDir = Join-Path $agentDir "skills"
