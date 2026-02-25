@@ -1,4 +1,3 @@
-````markdown
 # Java Standards
 
 Low-level Java coding standards that apply to every class, method, and variable. These are small but critical — follow them without exception.
@@ -442,5 +441,3 @@ BigDecimal tax = price.multiply(new BigDecimal("0.07"))
        };
    }
    ```
-
-````

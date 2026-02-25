@@ -1,4 +1,3 @@
-````markdown
 # HTTP Client
 
 Follow these conventions when making outbound HTTP calls from a Spring Boot application.
@@ -106,7 +105,14 @@ public class RestClientConfig {
 }
 ```
 
-Inject by qualifier:
+Inject by qualifier — **`@Qualifier` requires Lombok configuration** to work with `@RequiredArgsConstructor`:
+
+Add to `lombok.config` in the project root:
+```
+lombok.copyableAnnotations += org.springframework.beans.factory.annotation.Qualifier
+```
+
+Then inject normally:
 ```java
 @Service
 @RequiredArgsConstructor
@@ -114,6 +120,19 @@ public class PaymentService {
 
     @Qualifier("paymentRestClient")
     private final RestClient restClient;
+}
+```
+
+Without `lombok.config`, use an explicit constructor instead:
+```java
+@Service
+public class PaymentService {
+
+    private final RestClient restClient;
+
+    public PaymentService(@Qualifier("paymentRestClient") RestClient restClient) {
+        this.restClient = restClient;
+    }
 }
 ```
 
@@ -452,5 +471,3 @@ public class ReactiveExternalService {
 10. **Use `WebClient` only for reactive/non-blocking needs** — don't add `spring-boot-starter-webflux` just for outbound HTTP.
 11. **Write health indicators for critical external services** — see [actuator-health.md](actuator-health.md) for custom health checks.
 12. **Test external calls with `MockRestServiceServer` or WireMock** — see [testing.md](testing.md) for test conventions.
-
-````

@@ -54,6 +54,22 @@ public class BusinessRuleException extends RuntimeException {
         super(message);
     }
 }
+
+public class ConflictException extends RuntimeException {
+    public ConflictException(String message) {
+        super(message);
+    }
+}
+
+public class ExternalServiceException extends RuntimeException {
+    public ExternalServiceException(String message) {
+        super(message);
+    }
+
+    public ExternalServiceException(String message, Throwable cause) {
+        super(message, cause);
+    }
+}
 ```
 
 ---
@@ -86,6 +102,74 @@ public class GlobalExceptionHandler {
             ));
         detail.setProperty("fieldErrors", errors);
         return detail;
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ProblemDetail handleConstraintViolation(ConstraintViolationException ex) {
+        var detail = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        detail.setTitle("Constraint Violation");
+        var errors = ex.getConstraintViolations().stream()
+            .collect(Collectors.toMap(
+                v -> v.getPropertyPath().toString(),
+                ConstraintViolation::getMessage,
+                (a, b) -> a + "; " + b
+            ));
+        detail.setProperty("violations", errors);
+        return detail;
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ProblemDetail handleMalformedJson(HttpMessageNotReadableException ex) {
+        log.warn("Malformed request body: {}", ex.getMessage());
+        var detail = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        detail.setTitle("Malformed Request Body");
+        detail.setDetail("The request body could not be parsed. Ensure it is valid JSON.");
+        return detail;
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ProblemDetail handleMissingParam(MissingServletRequestParameterException ex) {
+        var detail = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        detail.setTitle("Missing Request Parameter");
+        detail.setDetail("Required parameter '" + ex.getParameterName() + "' is missing.");
+        return detail;
+    }
+
+    @ExceptionHandler(ConflictException.class)
+    public ProblemDetail handleConflict(ConflictException ex) {
+        log.warn(ex.getMessage());
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(BusinessRuleException.class)
+    public ProblemDetail handleBusinessRule(BusinessRuleException ex) {
+        log.warn(ex.getMessage());
+        return ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ProblemDetail handleDataIntegrity(DataIntegrityViolationException ex) {
+        log.warn("Data integrity violation: {}", ex.getMostSpecificCause().getMessage());
+        var detail = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        detail.setTitle("Data Conflict");
+        detail.setDetail("The operation conflicts with existing data (e.g., duplicate value).");
+        return detail;
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ProblemDetail handleAccessDenied(AccessDeniedException ex) {
+        var detail = ProblemDetail.forStatus(HttpStatus.FORBIDDEN);
+        detail.setTitle("Forbidden");
+        detail.setDetail("You do not have permission to perform this action.");
+        return detail;
+    }
+
+    @ExceptionHandler(ExternalServiceException.class)
+    public ProblemDetail handleExternalService(ExternalServiceException ex) {
+        log.error("External service failure: {}", ex.getMessage());
+        return ProblemDetail.forStatusAndDetail(
+            HttpStatus.BAD_GATEWAY, "An upstream service is unavailable"
+        );
     }
 
     @ExceptionHandler(Exception.class)

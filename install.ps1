@@ -13,7 +13,7 @@ param(
     [string]$ProjectPath,
 
     [ValidateSet("claude", "codex", "gemini", "cursor", "copilot", "all")]
-    [string[]]$Agent,
+    [string[]]$Agent,  # Pass multiple: -Agent claude,codex
 
     [switch]$User,
 

@@ -1,4 +1,3 @@
-````markdown
 # Configuration Properties
 
 Follow these conventions for externalizing and binding configuration in Spring Boot.
@@ -163,5 +162,3 @@ public class JwtProperties {
 5. **Never hardcode secrets, URLs, or environment-specific values** — always externalize them. See [security.md](security.md) for secrets management and [docker.md](docker.md) for Docker environment variables.
 6. **Group related properties under a common prefix**: `app.jwt.*`, `app.cors.*`, `app.email.*`.
 7. **Use relaxed binding** — Spring maps `app.default-page-size` in properties to `defaultPageSize` in Java automatically.
-
-````

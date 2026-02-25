@@ -45,19 +45,27 @@ public class SecurityConfig {
 
 ## CORS
 
-Configure CORS in the security config or a dedicated `@Bean`:
+Configure CORS in the security config using externalized properties (see [configuration-properties.md](configuration-properties.md)):
 
 ```java
 @Bean
-public CorsConfigurationSource corsConfigurationSource() {
+public CorsConfigurationSource corsConfigurationSource(AppProperties appProperties) {
     var config = new CorsConfiguration();
-    config.setAllowedOrigins(List.of("http://localhost:3000"));
-    config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH"));
+    config.setAllowedOrigins(appProperties.getCors().getAllowedOrigins());
+    config.setAllowedMethods(appProperties.getCors().getAllowedMethods());
     config.setAllowedHeaders(List.of("*"));
     var source = new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/api/**", config);
     return source;
 }
+```
+
+<!-- CUSTOMIZE: Adjust allowed origins and methods in application.properties -->
+
+In `application.properties`:
+```properties
+app.cors.allowed-origins=${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+app.cors.allowed-methods=GET,POST,PUT,DELETE,PATCH
 ```
 ---
 

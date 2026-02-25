@@ -143,12 +143,25 @@ public record UserResponse(
 
 - Use **Jakarta Bean Validation** annotations on request DTOs: `@NotBlank`, `@Email`, `@Size`, `@Min`, `@Max`, `@Pattern`.
 - Annotate controller parameters with `@Valid`.
+- **Add `@Validated` on the controller class** to enable validation of `@PathVariable` and `@RequestParam` arguments.
 - Return **400 Bad Request** with field-level error details on validation failure.
 
 ```java
-@PostMapping("/api/users")
-public ResponseEntity<UserResponse> createUser(@Valid @RequestBody CreateUserRequest request) {
-    // ...
+@Validated  // enables @Min, @Max, etc. on path/query params
+@RestController
+@RequestMapping("/api/v1/users")
+public class UserController {
+
+    @PostMapping
+    public ResponseEntity<UserResponse> createUser(@Valid @RequestBody CreateUserRequest request) {
+        // ...
+    }
+
+    @GetMapping("/{id}")
+    public UserResponse getUser(@PathVariable @Min(1) Long id) {
+        // @Min(1) validated because controller has @Validated
+        return userService.findById(id);
+    }
 }
 ```
 
@@ -276,3 +289,9 @@ This prevents information leakage — callers can't probe for entity field names
 | Not found | 404 Not Found |
 | Conflict | 409 Conflict |
 | Server error | 500 Internal Server Error |
+
+---
+
+## HATEOAS
+
+**Do not use Spring HATEOAS.** Return plain DTOs without hypermedia links. HATEOAS adds significant complexity with minimal benefit for most REST APIs. Document endpoints in Swagger/OpenAPI instead.

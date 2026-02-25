@@ -172,3 +172,193 @@ Teams abuse logging when there's no clear policy. Follow these definitions stric
 5. **File logs rotate daily** with 50MB max per file, 30-day retention, 1GB total cap.
 6. **Add `logs/` to `.gitignore`** — never commit log files.
 7. **Follow the logging level policy** — see the table above. `INFO` for business milestones, `ERROR` for unexpected failures. Don't abuse levels.
+
+---
+
+## Structured / JSON Logging
+
+**For production log aggregation (ELK, Loki, Datadog, Splunk), use JSON-format logs** so they can be parsed automatically. Keep console logging human-readable for local development.
+
+### Dependencies
+
+Add Logback's JSON encoder:
+```xml
+<dependency>
+    <groupId>ch.qos.logback.contrib</groupId>
+    <artifactId>logback-json-classic</artifactId>
+    <version>0.1.5</version>
+</dependency>
+<dependency>
+    <groupId>ch.qos.logback.contrib</groupId>
+    <artifactId>logback-jackson</artifactId>
+    <version>0.1.5</version>
+</dependency>
+```
+
+Or use **Logstash Logback Encoder** (preferred — more features):
+```xml
+<dependency>
+    <groupId>net.logstash.logback</groupId>
+    <artifactId>logstash-logback-encoder</artifactId>
+    <version>8.0</version>
+</dependency>
+```
+
+<!-- CUSTOMIZE: Update version to latest stable release -->
+
+### logback-spring.xml with JSON for Production
+
+Use Spring profiles in logback to switch between human-readable (local) and JSON (production):
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="app"/>
+    <springProperty scope="context" name="LOG_DIR" source="logging.file.path" defaultValue="logs"/>
+
+    <!-- ===== Console Appender (human-readable, always active) ===== -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [%X{traceId:-}] - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- ===== JSON File Appender (for production log aggregation) ===== -->
+    <appender name="JSON_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/${APP_NAME}.json.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/${APP_NAME}.%d{yyyy-MM-dd}.%i.json.log.gz</fileNamePattern>
+            <maxFileSize>50MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <includeMdcKeyName>traceId</includeMdcKeyName>
+            <includeMdcKeyName>requestId</includeMdcKeyName>
+            <includeMdcKeyName>userId</includeMdcKeyName>
+        </encoder>
+    </appender>
+
+    <!-- ===== Standard File Appender (plain text) ===== -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/${APP_NAME}.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/${APP_NAME}.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>50MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [%X{traceId:-}] - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- ===== Error-only File Appender ===== -->
+    <appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/${APP_NAME}-error.log</file>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>ERROR</level>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/${APP_NAME}-error.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>50MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>500MB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [%X{traceId:-}] - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+        <appender-ref ref="ERROR_FILE"/>
+        <appender-ref ref="JSON_FILE"/>
+    </root>
+
+</configuration>
+```
+
+<!-- CUSTOMIZE: Remove JSON_FILE appender if you don't need structured logging -->
+
+---
+
+## MDC (Mapped Diagnostic Context)
+
+**Use MDC to attach request-scoped context (request ID, user ID, trace ID) to every log line.** This makes it possible to filter all logs for a single request across services.
+
+### Request Correlation Filter
+
+Create a filter in `config/` that sets MDC values for every HTTP request:
+
+```java
+@Component
+@Order(Ordered.HIGHEST_PRECEDENCE)
+public class MdcFilter implements Filter {
+
+    @Override
+    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+            throws IOException, ServletException {
+        try {
+            var httpRequest = (HttpServletRequest) request;
+            var requestId = Optional.ofNullable(httpRequest.getHeader("X-Request-Id"))
+                .orElse(UUID.randomUUID().toString().substring(0, 8));
+            MDC.put("requestId", requestId);
+            MDC.put("method", httpRequest.getMethod());
+            MDC.put("uri", httpRequest.getRequestURI());
+            chain.doFilter(request, response);
+        } finally {
+            MDC.clear();  // always clear to prevent leaks across threads
+        }
+    }
+}
+```
+
+### Usage
+
+MDC values appear automatically in log output via the `%X{requestId}` pattern in logback. No changes needed in application code:
+
+```java
+log.info("User created id={}", user.getId());
+// Output: 2025-01-15 10:30:45.123 [http-nio-8080-exec-1] INFO  UserService [abc12345] - User created id=42
+```
+
+JSON output includes MDC fields automatically:
+```json
+{
+  "timestamp": "2025-01-15T10:30:45.123Z",
+  "level": "INFO",
+  "logger": "com.example.app.service.UserService",
+  "message": "User created id=42",
+  "requestId": "abc12345",
+  "method": "POST",
+  "uri": "/api/v1/users"
+}
+```
+
+### MDC Rules
+
+1. **Always clear MDC in a `finally` block** — prevents context leaking to other requests in the thread pool.
+2. **Propagate MDC to `@Async` threads** — Spring's default `TaskExecutor` doesn't copy MDC. Use a decorator:
+   ```java
+   @Bean
+   public TaskExecutor taskExecutor() {
+       var executor = new ThreadPoolTaskExecutor();
+       executor.setTaskDecorator(runnable -> {
+           var context = MDC.getCopyOfContextMap();
+           return () -> {
+               try {
+                   if (context != null) MDC.setContextMap(context);
+                   runnable.run();
+               } finally {
+                   MDC.clear();
+               }
+           };
+       });
+       executor.initialize();
+       return executor;
+   }
+   ```
+3. **Standard MDC keys**: `requestId`, `traceId`, `userId`. Keep them consistent across all services.

@@ -1,4 +1,3 @@
-````markdown
 # Mapper Conventions
 
 Follow these conventions for mapping between entities and DTOs in Spring Boot.
@@ -144,5 +143,3 @@ public class UserMapper {
 5. **Use `@Mapping(target = ..., ignore = true)`** for fields the caller shouldn't set (ID, audit fields).
 6. **Use `@BeanMapping(nullValuePropertyMappingStrategy = IGNORE)`** for partial updates (PATCH) so null fields in the request don't overwrite existing values.
 7. **Test mappers** — MapStruct generates code, but verify custom mappings and edge cases (see [testing.md](testing.md) for test conventions).
-
-````

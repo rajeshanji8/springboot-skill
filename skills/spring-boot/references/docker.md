@@ -1,4 +1,3 @@
-````markdown
 # Docker
 
 Follow these conventions for containerizing Spring Boot applications and running local development dependencies.
@@ -297,5 +296,3 @@ volumes:
 14. **Set resource limits on every container** — `memory` and `cpus` in `deploy.resources.limits` to prevent runaway containers.
 15. **Build multi-arch images** for ARM64 + AMD64 — required for mixed infrastructure (Apple Silicon devs, AWS Graviton, etc.).
 16. **Use health-based `depends_on`** — `depends_on: { service: condition: service_healthy }` instead of bare `depends_on` to ensure dependencies are ready.
-
-````

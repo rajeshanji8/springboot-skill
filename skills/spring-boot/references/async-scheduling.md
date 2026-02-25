@@ -1,4 +1,3 @@
-````markdown
 # Async & Scheduling
 
 Follow these conventions for asynchronous execution and scheduled tasks in Spring Boot.
@@ -149,5 +148,3 @@ app.cleanup.cron=0 0 2 * * *
 7. **Externalize cron expressions** into `application.properties` — don't hardcode schedules.
 8. **Log start and completion** of every scheduled task with relevant counts/metrics.
 9. **Put scheduled tasks in their own classes** — don't mix them into service classes.
-
-````

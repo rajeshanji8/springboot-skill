@@ -91,6 +91,224 @@ public interface UserRepository extends JpaRepository<User, Long> {
 - Use `ddl-auto=validate` in production — never `update` or `create`.
 - Every changeset must have a meaningful `id` and `author`.
 
+### Master Changelog Structure
+
+The master changelog includes individual changeset files in order:
+
+```yaml
+# db/changelog/db.changelog-master.yaml
+databaseChangeLog:
+  - include:
+      file: db/changelog/changes/001-create-users-table.yaml
+  - include:
+      file: db/changelog/changes/002-create-orders-table.yaml
+  - include:
+      file: db/changelog/changes/003-add-email-index.yaml
+  - include:
+      file: db/changelog/changes/004-add-phone-column.yaml
+```
+
+**Rules:**
+- Use **sequential numbering** (`001-`, `002-`, ...) to maintain execution order.
+- **One concern per changeset file** — don't mix creating a table with adding data.
+- **Never reorder** includes — Liquibase tracks executed changesets by ID + author + file path.
+
+### Changeset Examples
+
+**Create table:**
+```yaml
+# db/changelog/changes/001-create-users-table.yaml
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-users-table
+      author: team
+      changes:
+        - createTable:
+            tableName: users
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: email
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+```
+
+**Add column:**
+```yaml
+# db/changelog/changes/004-add-phone-column.yaml
+databaseChangeLog:
+  - changeSet:
+      id: 004-add-phone-column
+      author: team
+      changes:
+        - addColumn:
+            tableName: users
+            columns:
+              - column:
+                  name: phone
+                  type: varchar(20)
+                  constraints:
+                    nullable: true
+```
+
+**Add index:**
+```yaml
+# db/changelog/changes/003-add-email-index.yaml
+databaseChangeLog:
+  - changeSet:
+      id: 003-add-email-index
+      author: team
+      changes:
+        - createIndex:
+            indexName: idx_users_email
+            tableName: users
+            columns:
+              - column:
+                  name: email
+```
+
+**Data migration (seed/reference data):**
+```yaml
+# db/changelog/changes/005-seed-roles.yaml
+databaseChangeLog:
+  - changeSet:
+      id: 005-seed-roles
+      author: team
+      context: "!test"
+      changes:
+        - insert:
+            tableName: roles
+            columns:
+              - column: { name: name, value: ADMIN }
+              - column: { name: description, value: Administrator }
+        - insert:
+            tableName: roles
+            columns:
+              - column: { name: name, value: USER }
+              - column: { name: description, value: Standard user }
+```
+
+### Rollback Strategies
+
+Always define rollbacks for schema changes so failed deployments can be reverted:
+
+```yaml
+databaseChangeLog:
+  - changeSet:
+      id: 004-add-phone-column
+      author: team
+      changes:
+        - addColumn:
+            tableName: users
+            columns:
+              - column:
+                  name: phone
+                  type: varchar(20)
+      rollback:
+        - dropColumn:
+            tableName: users
+            columnName: phone
+```
+
+**Rollback rules:**
+- **`createTable`** — Liquibase auto-generates rollback (`dropTable`). Explicit rollback optional.
+- **`addColumn`** — auto-rollback works. Explicit `dropColumn` recommended for clarity.
+- **`insert` / data changes** — no auto-rollback. Always define explicit `delete` rollback.
+- **`dropColumn` / `dropTable`** — rollback must recreate the column/table with data. This is destructive; avoid in production unless data is backed up.
+
+### Contexts and Labels
+
+Use **contexts** to control which changesets run in which environment:
+
+```yaml
+databaseChangeLog:
+  - changeSet:
+      id: 010-seed-test-users
+      author: team
+      context: "dev or test"
+      changes:
+        - insert:
+            tableName: users
+            columns:
+              - column: { name: name, value: Test User }
+              - column: { name: email, value: test@example.com }
+```
+
+Configure the active context in `application.properties`:
+```properties
+spring.liquibase.contexts=${LIQUIBASE_CONTEXTS:dev}
+```
+
+Common context patterns:
+- `context: "!test"` — run everywhere except test
+- `context: "dev or test"` — run in dev and test only
+- `context: "prod"` — production-only seed data
+- No context attribute — runs in all environments (default for schema changes)
+
+### Preconditions
+
+Use **preconditions** to guard against re-applying changes or applying to the wrong database:
+
+```yaml
+databaseChangeLog:
+  - changeSet:
+      id: 020-add-status-column
+      author: team
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: users
+                columnName: status
+      changes:
+        - addColumn:
+            tableName: users
+            columns:
+              - column:
+                  name: status
+                  type: varchar(20)
+                  defaultValue: ACTIVE
+```
+
+### Production Migration Best Practices
+
+1. **Lock timeout** — configure Liquibase lock wait time to avoid blocking deployments:
+   ```properties
+   spring.liquibase.liquibase-schema=public
+   ```
+   If Liquibase gets stuck on a lock, clear it manually: `DELETE FROM databasechangeloglock WHERE locked = true;`
+2. **Never modify a deployed changeset** — Liquibase validates checksums. If a checksum fails, the app won't start. Always add new changesets.
+3. **Test migrations against a copy of production data** — never run untested migrations in production.
+4. **Make migrations backward-compatible** — add columns as nullable first, deploy code that handles both old and new schema, then add constraints in a later changeset.
+5. **Separate destructive changes** — dropping columns or tables should be in their own changeset, deployed after the code no longer references them.
+6. **Use `ddl-auto=validate`** in production — Hibernate validates that entities match the schema without making changes:
+   ```properties
+   spring.jpa.hibernate.ddl-auto=${DDL_AUTO:validate}
+   ```
+
 ---
 
 ## Transactions

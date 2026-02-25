@@ -1,4 +1,3 @@
-````markdown
 # Dev Scripts
 
 Every Spring Boot project must include a `start.sh` at the project root that builds, starts, and opens the app with a single command. No manual setup steps.
@@ -256,6 +255,44 @@ my-app/
 
 ---
 
+## Windows Support
+
+`start.sh` is a Bash script. On Windows, run it using one of these methods:
+
+### Option 1: Git Bash (Recommended)
+
+Git for Windows includes Git Bash. Open Git Bash in the project root and run:
+```bash
+./start.sh
+./start.sh --locally
+```
+
+### Option 2: WSL (Windows Subsystem for Linux)
+
+If WSL is installed:
+```bash
+wsl ./start.sh
+```
+
+### Option 3: PowerShell Quick Start
+
+For developers who cannot use Bash, use this minimal PowerShell equivalent. This is **not** a full replacement for `start.sh` — it covers the most common workflow (build + run locally):
+
+```powershell
+# Quick start — build and run locally
+$MVN = if (Test-Path "./mvnw.cmd") { "./mvnw.cmd" } else { "mvn" }
+& $MVN clean install -DskipTests -B
+if ($LASTEXITCODE -ne 0) { Write-Host "Build failed" -ForegroundColor Red; exit 1 }
+
+& $MVN spring-boot:run -B
+```
+
+For Docker-based startup on Windows, use `docker compose up --build -d` directly after building.
+
+**The canonical script is `start.sh`** — it is the single source of truth for project startup. PowerShell is a convenience fallback only.
+
+---
+
 ## Rules
 
 1. **Every project must have `start.sh`** at the root — this is not optional. It's the single entry point for running the app.
@@ -264,8 +301,6 @@ my-app/
 4. **Tests are skipped by default** — `./start.sh` builds fast. Use `--noskiptests` for CI or pre-commit validation.
 5. **Health check gates the "ready" message** — the script waits for `/actuator/health` to return 200 before printing URLs. If it times out, it tells you where to look for logs.
 6. **Customize the `Configuration` section** at the top of the script — change `APP_NAME`, `APP_PORT`, and URLs to match your project.
-7. **`start.sh` must be in version control** — it is part of the project, not a developer-local tool. On Windows, use Git Bash or WSL.
+7. **`start.sh` must be in version control** — it is part of the project, not a developer-local tool. On Windows, use Git Bash or WSL (see Windows Support above).
 8. **The script must be self-contained** — no external dependencies beyond Java, Maven (or wrapper), Docker, and curl. No npm, no Makefile, no Gradle plugins.
 9. **Swagger UI must be accessible after start** — if OpenAPI is configured (see [api-design.md](api-design.md)), the script prints the Swagger URL. This is the user's primary verification step.
-
-````

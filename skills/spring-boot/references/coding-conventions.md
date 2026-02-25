@@ -47,7 +47,7 @@ Follow these coding standards when writing or modifying Java code in a Spring Bo
    - `@Slf4j` on every class that needs logging (this is the **only** way to get a logger)
    - `@Builder` for flexible object construction
    - `@Getter`, `@Setter`, `@NoArgsConstructor` on entities
-   - `@Data` on DTOs (but **never** on entities)
+   - **Never use `@Data` on DTOs** — prefer Java records for all immutable DTOs (requests and responses). Only use `@Data` on a mutable DTO class when MapStruct's `@MappingTarget` requires setters (see [mapper-conventions.md](mapper-conventions.md)). `@Data` is **never** allowed on entities.
    - **Do NOT use Lombok's `@ToString`** — always override `toString()` manually with JSON output (see below)
    - **NEVER write manual `get*()`/`set*()` methods** — always use `@Getter`/`@Setter` annotations. No exceptions.
      - Class-level `@Getter`/`@Setter` for classes where all fields need accessors
@@ -86,40 +86,34 @@ Follow these coding standards when writing or modifying Java code in a Spring Bo
 
 8. **Override `toString()` on every DTO, entity, and model class** to return JSON. When serialization fails, log the error and fall back to class name + hashcode.
 
-   First, create a shared utility in `util/` that reuses the Spring-managed `ObjectMapper` bean:
+   First, create a **pure utility class** (no Spring dependency) in `util/`:
    ```java
-   @Component
-   public class JsonUtil {
+   public final class JsonUtil {
 
-       private static ObjectMapper MAPPER;
-
-       // Fallback used before Spring context is ready
-       private static final ObjectMapper DEFAULT_MAPPER = new ObjectMapper()
+       private static final ObjectMapper MAPPER = new ObjectMapper()
            .registerModule(new JavaTimeModule())
            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
            .disable(SerializationFeature.FAIL_ON_EMPTY_BEANS);
 
-       public JsonUtil(ObjectMapper objectMapper) {
-           JsonUtil.MAPPER = objectMapper;
-       }
+       private JsonUtil() {}
 
        public static String toJson(Object obj) {
            try {
-               ObjectMapper mapper = MAPPER != null ? MAPPER : DEFAULT_MAPPER;
-               return mapper.writeValueAsString(obj);
+               return MAPPER.writeValueAsString(obj);
            } catch (Exception e) {
                return obj.getClass().getSimpleName() + "@" + Integer.toHexString(obj.hashCode());
            }
        }
    }
    ```
-   - Once Spring boots, `JsonUtil` picks up the `ObjectMapper` bean from `JacksonConfig` — single source of truth.
-   - Before Spring context is ready (e.g., during deserialization), it falls back to a default instance with the same config.
+   - `JsonUtil` is a **stateless utility** — no `@Component`, no Spring injection, no static mutable state.
+   - It owns its own `ObjectMapper` instance configured identically to the `JacksonConfig` bean.
+   - The Spring-managed `ObjectMapper` bean in `JacksonConfig` is for injection into services/controllers. `JsonUtil` is exclusively for `toString()` and other static contexts.
+   - **Do not make `JsonUtil` a Spring bean** — mixing static access with dependency injection creates testing difficulties and class-loader issues.
 
    Then use it in every class:
    ```java
-   @Slf4j
    @Entity
    @Getter
    @Setter
@@ -130,19 +124,14 @@ Follow these coding standards when writing or modifying Java code in a Spring Bo
 
        @Override
        public String toString() {
-           try {
-               return JsonUtil.toJson(this);
-           } catch (Exception e) {
-               log.error("Failed to serialize {} to JSON", getClass().getSimpleName(), e);
-               return getClass().getSimpleName() + "@" + Integer.toHexString(hashCode());
-           }
+           return JsonUtil.toJson(this);
        }
    }
    ```
    **Rules for `toString()`:**
    - Every DTO, entity, request, and response class must override `toString()`.
-   - Always return JSON via `JsonUtil.toJson(this)`.
-   - Catch all exceptions — use `log.error()` to log the failure, never let `toString()` throw.
+   - Always return JSON via `JsonUtil.toJson(this)`. The method already handles exceptions internally — it returns `ClassName@hashCode` on failure.
+   - **Never log inside `toString()`** — SLF4J's `{}` placeholder calls `toString()` on the argument. If `toString()` itself logs with `{}`, you get infinite recursion. Let `JsonUtil.toJson()` handle failures silently.
    - `JsonUtil` uses a static `ObjectMapper` so it works outside Spring context. The Spring-managed `ObjectMapper` bean in `JacksonConfig` is for injection into services/controllers — `JsonUtil` is for `toString()` and other static contexts.
 
    **Circular Reference Prevention (bidirectional JPA relationships):**
@@ -268,7 +257,7 @@ Follow these coding standards when writing or modifying Java code in a Spring Bo
    - When in doubt, **exclude the field**. It's always safer to add it back than to leak it accidentally.
 
    **Performance considerations for `toString()` with JSON:**
-   - **Lazy-loaded proxies**: Calling `toString()` on an entity with `FetchType.LAZY` collections **outside a transaction** will throw `LazyInitializationException`. The `catch` block in `toString()` handles this gracefully by falling back to class name + hashcode.
+   - **Lazy-loaded proxies**: Calling `toString()` on an entity with `FetchType.LAZY` collections **outside a transaction** will throw `LazyInitializationException`. `JsonUtil.toJson()` catches this internally and falls back to `ClassName@hashCode`.
    - **Don't call `toString()` in hot loops** — serializing an entity to JSON on every iteration is expensive. Use it for logging and debugging, not for data processing.
    - **Log at `DEBUG` level with parameterized logging** — `log.debug("Loaded user: {}", user)` — SLF4J only calls `toString()` if DEBUG is enabled, so there's zero cost in production when DEBUG is off.
 

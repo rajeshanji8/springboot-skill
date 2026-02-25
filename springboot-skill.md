@@ -99,7 +99,10 @@ springboot-skill/
             ├── caching.md
             ├── async-scheduling.md
             ├── actuator-health.md
-            └── docker.md
+            ├── docker.md
+            ├── dev-scripts.md
+            ├── dependencies.md
+            └── http-client.md
 ```
 
 ### How it works
@@ -129,6 +132,9 @@ springboot-skill/
 | Async & Scheduling | `async-scheduling.md` | @Async, @Scheduled, thread pools |
 | Actuator & Health | `actuator-health.md` | Health indicators, metrics, Micrometer |
 | Docker | `docker.md` | Dockerfile, Docker Compose, containerization |
+| Dev Scripts | `dev-scripts.md` | Build-and-run script, Docker/local startup |
+| Dependencies | `dependencies.md` | Consolidated pom.xml template, all required dependencies |
+| HTTP Client | `http-client.md` | RestClient, timeouts, connection pooling, retry |
 
 ---
 
@@ -142,7 +148,7 @@ springboot-skill/
 
 ## References
 
-- [Claude Agent Skills](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview)
-- [OpenAI Codex Skills](https://developers.openai.com/codex/skills/)
-- [Gemini CLI Skills](https://geminicli.com/docs/cli/skills/)
+- [Claude Agent Skills](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/skills)
+- [OpenAI Codex](https://openai.com/index/openai-codex/)
+- [Gemini CLI](https://github.com/google-gemini/gemini-cli)
 

@@ -90,7 +90,7 @@ my-app/
 Usage: `./start.sh` → builds, starts in Docker, waits for health, prints Swagger URL. See [dev-scripts.md](dev-scripts.md) for all options.
 
 **Rules:**
-- **Always use `application.properties`** — no YAML config files (rarely go for `.yaml`).
+- **Always use `application.properties`** — no YAML config files.
 - **No profiles** (`application-dev.properties`, `application-prod.properties`). Use a single `application.properties` with environment variable placeholders for values that differ per environment.
 - **Include comprehensive logging config** in `application.properties` so users can toggle to `DEBUG` when needed (see [logging.md](logging.md) for full Logback setup):
   ```properties

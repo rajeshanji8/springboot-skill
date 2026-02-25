@@ -1,4 +1,3 @@
-````markdown
 # Caching
 
 Follow these conventions for caching in Spring Boot applications.
@@ -75,6 +74,38 @@ public class CacheConfig {
     }
 }
 ```
+
+### Per-Cache TTL Configuration
+
+When different caches need different TTLs, define each cache individually:
+
+```java
+@Configuration
+@EnableCaching
+public class CacheConfig {
+
+    @Bean
+    public CacheManager cacheManager() {
+        var manager = new SimpleCacheManager();
+        manager.setCaches(List.of(
+            buildCache("users", Duration.ofMinutes(10), 1000),
+            buildCache("products", Duration.ofMinutes(30), 5000),
+            buildCache("config", Duration.ofHours(1), 100)
+        ));
+        return manager;
+    }
+
+    private CaffeineCache buildCache(String name, Duration ttl, long maxSize) {
+        return new CaffeineCache(name, Caffeine.newBuilder()
+            .maximumSize(maxSize)
+            .expireAfterWrite(ttl)
+            .recordStats()
+            .build());
+    }
+}
+```
+
+This gives each cache its own TTL and max size — short-lived user data vs. long-lived config.
 
 ---
 
@@ -157,5 +188,3 @@ public class UserService {
 7. **Use Caffeine for single-instance apps**, Redis for distributed deployments.
 8. **Don't cache volatile data** — if data changes every few seconds, caching adds complexity without benefit.
 9. **Spring cache proxies are method-level** — calling a `@Cacheable` method from within the same class bypasses the cache. Call from another bean.
-
-````

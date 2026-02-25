@@ -1,4 +1,3 @@
-````markdown
 # Actuator & Health
 
 Follow these conventions for monitoring, health checks, and metrics in Spring Boot.
@@ -323,5 +322,3 @@ When a `SIGTERM` is received (e.g., during a rolling deployment):
 10. **Never put external dependency checks in liveness probes** — a database outage should not trigger a restart loop. Put them in readiness only.
 11. **Always enable graceful shutdown** — `server.shutdown=graceful` with a 30s timeout. Prevents dropped connections during deployments.
 12. **Use startup probes for slow-starting apps** — prevents the liveness probe from killing the container before it finishes initialization.
-
-````

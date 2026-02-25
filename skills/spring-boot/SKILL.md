@@ -74,3 +74,7 @@ Containerize the application using [references/docker.md](references/docker.md) 
 ## Dev Scripts
 
 Every project must include a `start.sh` — see [references/dev-scripts.md](references/dev-scripts.md) for the build-and-run script that handles Maven build, Docker/local startup, health check, and prints Swagger URL.
+
+## Dependencies
+
+Set up the Maven `pom.xml` using [references/dependencies.md](references/dependencies.md) for the canonical dependency list, BOM versioning rules, annotation processor configuration, and scope conventions.
