@@ -130,6 +130,39 @@ public class UserService {
 
 ---
 
+## Logging Level Policy
+
+Teams abuse logging when there's no clear policy. Follow these definitions strictly:
+
+| Level | When to Use | Example |
+|-------|------------|---------|
+| `ERROR` | **Unexpected failure** — something broke that shouldn't have. Requires investigation. | `log.error("Payment processing failed for orderId={}", orderId, ex)` |
+| `WARN` | **Recoverable issue** — something unexpected happened but the system handled it. | `log.warn("Retry attempt {} for external API call", retryCount)` |
+| `INFO` | **Business milestones** — key events that matter to operations. | `log.info("User created id={}", user.getId())` |
+| `DEBUG` | **Diagnostic detail** — flow tracing, variable values, branch decisions. Off in production. | `log.debug("Fetching user with id={}", id)` |
+| `TRACE` | **Very verbose** — only for specific libraries (Hibernate binds, HTTP wire logs). Never in app code. | Configured per-library, not used in your code. |
+
+**Rules for log levels:**
+- **`INFO` is the production level** — `INFO` logs should tell the story of what the application is doing. If you read only `INFO` logs, you should understand every significant business event.
+- **`DEBUG` is off in production** — use it freely for diagnostic detail, but never log sensitive data at any level.
+- **`ERROR` means someone should look at it** — don't log expected business conditions (validation failures, not-found) as `ERROR`. Those are `WARN` or `INFO`.
+- **Every `ERROR` must include the exception** — `log.error("msg", ex)` never `log.error("msg: " + ex.getMessage())`.
+- **Never log and throw** — either log the error or throw an exception, not both. The global exception handler logs thrown exceptions.
+  ```java
+  // ❌ NEVER — duplicates the log entry
+  catch (Exception ex) {
+      log.error("Failed to process", ex);
+      throw new ServiceException("Failed to process", ex);
+  }
+
+  // ✅ Just throw — let the exception handler log it
+  catch (Exception ex) {
+      throw new ServiceException("Failed to process", ex);
+  }
+  ```
+
+---
+
 ## Rules
 
 1. **Every project must have `logback-spring.xml`** — never rely on Spring Boot's default console-only output.
@@ -138,9 +171,4 @@ public class UserService {
 4. **Log levels are set in `application.properties`** — users can toggle to DEBUG without touching logback XML.
 5. **File logs rotate daily** with 50MB max per file, 30-day retention, 1GB total cap.
 6. **Add `logs/` to `.gitignore`** — never commit log files.
-7. **Log level guidance**:
-   - `ERROR` — something broke, needs attention
-   - `WARN` — unexpected but recoverable
-   - `INFO` — key business events (user created, order placed, etc.)
-   - `DEBUG` — detailed flow for troubleshooting (off in production by default)
-   - `TRACE` — very verbose, only for specific libraries like Hibernate bind parameters
+7. **Follow the logging level policy** — see the table above. `INFO` for business milestones, `ERROR` for unexpected failures. Don't abuse levels.

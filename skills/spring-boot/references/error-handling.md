@@ -75,10 +75,14 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleValidation(MethodArgumentNotValidException ex) {
         var detail = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
         detail.setTitle("Validation Failed");
+        // Use groupingBy to handle multiple errors per field
         var errors = ex.getFieldErrors().stream()
-            .collect(Collectors.toMap(
+            .collect(Collectors.groupingBy(
                 FieldError::getField,
-                fe -> fe.getDefaultMessage() != null ? fe.getDefaultMessage() : "invalid"
+                Collectors.mapping(
+                    fe -> fe.getDefaultMessage() != null ? fe.getDefaultMessage() : "invalid",
+                    Collectors.toList()
+                )
             ));
         detail.setProperty("fieldErrors", errors);
         return detail;

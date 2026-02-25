@@ -1,6 +1,6 @@
 ---
 name: spring-boot-skill
-description: Build Spring Boot 3.x applications following best practices. Use when developing or modifying Spring Boot apps that use Spring MVC, Spring Data JPA, Spring Security, or Spring Boot testing, including package structure, REST APIs, entities/repositories, service layer, error handling, testing, mapping, caching, async/scheduling, configuration, Docker, and actuator/health.
+description: Build Spring Boot 3.x applications following best practices. Use when developing or modifying Spring Boot apps that use Spring MVC, Spring Data JPA, Spring Security, or Spring Boot testing, including package structure, coding conventions, Java standards, REST APIs, entities/repositories, service layer, error handling, testing, mapping, caching, async/scheduling, configuration, logging, HTTP clients, security, Docker, dev scripts, and actuator/health.
 ---
 
 # Spring Boot Skill
@@ -59,6 +59,10 @@ Run background work using [references/async-scheduling.md](references/async-sche
 
 Secure the application using [references/security.md](references/security.md) for authentication, CORS, and secrets management.
 
+## HTTP Client
+
+Make outbound HTTP calls using [references/http-client.md](references/http-client.md) for RestClient configuration, timeouts, connection pooling, error handling, and WebClient for reactive needs.
+
 ## Actuator & Health
 
 Monitor the application using [references/actuator-health.md](references/actuator-health.md) for health indicators, custom metrics, Micrometer, and runtime log level changes.
@@ -66,3 +70,7 @@ Monitor the application using [references/actuator-health.md](references/actuato
 ## Docker
 
 Containerize the application using [references/docker.md](references/docker.md) for multi-stage Dockerfiles, Docker Compose for local dev, and Spring Boot build-image.
+
+## Dev Scripts
+
+Every project must include a `start.sh` — see [references/dev-scripts.md](references/dev-scripts.md) for the build-and-run script that handles Maven build, Docker/local startup, health check, and prints Swagger URL.

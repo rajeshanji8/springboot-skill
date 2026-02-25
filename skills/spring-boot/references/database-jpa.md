@@ -8,8 +8,8 @@ Follow these conventions for database access and JPA entity design in Spring Boo
 
 1. **Use `@Entity`** on all persistent classes. Keep them in `model/entity/`.
 2. **Use `Long` for IDs** with `@GeneratedValue(strategy = GenerationType.IDENTITY)`.
-3. **Add audit fields** to every entity: `createdAt`, `updatedAt`.
-4. **Use `@MappedSuperclass`** or Spring Data's `@EntityListeners(AuditingEntityListener.class)` for common audit fields.
+3. **Add audit fields to business entities** — `createdAt`, `updatedAt`, `createdBy`, `updatedBy`. Not every table needs auditing — lookup tables, configuration tables, and join tables typically don't. Apply audit fields to entities that represent **business objects users create or modify** (e.g., `User`, `Order`, `Invoice`), not to static reference data (e.g., `Country`, `Currency`, `Permission`).
+4. **Use `@MappedSuperclass`** with `@EntityListeners(AuditingEntityListener.class)` for shared audit fields — see [JPA Auditing](#jpa-auditing) section below.
 5. **Avoid Lombok `@Data`** on entities — use `@Getter`, `@Setter`, `@NoArgsConstructor` individually.
 6. **Override `equals()` and `hashCode()`** based on the business key or ID (not all fields).
 
@@ -101,6 +101,245 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
 ---
 
+## Connection Pooling (HikariCP)
+
+**HikariCP is Spring Boot's default connection pool.** Always configure it explicitly — the defaults are rarely optimal for production.
+
+Add to `application.properties`:
+
+```properties
+# ===== HikariCP Connection Pool =====
+spring.datasource.hikari.pool-name=AppHikariPool
+spring.datasource.hikari.maximum-pool-size=${HIKARI_MAX_POOL_SIZE:10}
+spring.datasource.hikari.minimum-idle=${HIKARI_MIN_IDLE:5}
+spring.datasource.hikari.idle-timeout=300000
+spring.datasource.hikari.max-lifetime=1800000
+spring.datasource.hikari.connection-timeout=30000
+spring.datasource.hikari.leak-detection-threshold=60000
+spring.datasource.hikari.validation-timeout=5000
+```
+
+<!-- CUSTOMIZE: Adjust pool sizes based on your database and expected concurrency -->
+
+| Property | Default | Description |
+|----------|---------|-------------|
+| `maximum-pool-size` | 10 | Max number of connections (active + idle). Formula: `connections = (core_count * 2) + effective_spindle_count`. Start with 10, increase based on load testing. |
+| `minimum-idle` | same as max | Min idle connections kept in pool. Set lower than max to allow pool to shrink during low traffic. |
+| `idle-timeout` | 600000 (10m) | How long an idle connection stays in pool before being retired. Use 300000 (5m). |
+| `max-lifetime` | 1800000 (30m) | Max lifetime of a connection. Must be **shorter** than the database's `wait_timeout`. |
+| `connection-timeout` | 30000 (30s) | How long to wait for a connection from the pool before throwing an exception. |
+| `leak-detection-threshold` | 0 (disabled) | Log a warning if a connection is held longer than this (ms). Use 60000 (60s) to detect leaks. |
+| `validation-timeout` | 5000 (5s) | Timeout for connection validation check. |
+
+### Pool Sizing Guidelines
+
+1. **Start small** — 10 connections handles more load than you think. Each connection consumes database memory and OS resources.
+2. **Formula**: `pool_size = (core_count * 2) + effective_spindle_count` (from HikariCP wiki). For SSDs, `spindle_count = 1`.
+3. **Monitor before scaling** — use Actuator metrics (`hikaricp.connections.active`, `hikaricp.connections.idle`, `hikaricp.connections.pending`) to right-size.
+4. **Multiple microservices** — if 10 services each have `max-pool-size=10`, that's 100 connections to the database. Coordinate across services.
+5. **Never set `maximum-pool-size` higher than the database's `max_connections`** — on PostgreSQL, check with `SHOW max_connections;`.
+
+### Monitoring Pool Metrics
+
+HikariCP automatically exposes metrics via Micrometer (see [actuator-health.md](actuator-health.md)):
+
+```bash
+# Active connections
+curl http://localhost:8080/actuator/metrics/hikaricp.connections.active
+
+# Idle connections
+curl http://localhost:8080/actuator/metrics/hikaricp.connections.idle
+
+# Pending connection requests (should be 0 under normal load)
+curl http://localhost:8080/actuator/metrics/hikaricp.connections.pending
+
+# Connection acquisition time
+curl http://localhost:8080/actuator/metrics/hikaricp.connections.acquire
+```
+
+If `hikaricp.connections.pending` is consistently > 0, **increase the pool size or optimize slow queries**.
+
+---
+
+## JPA Auditing
+
+**Every project using `@CreatedDate` / `@LastModifiedDate` must enable JPA auditing.**
+
+### When to Use Auditing
+
+Audit fields are for **business entities that users create or modify**. Not every entity needs them:
+
+| Needs Auditing | Skip Auditing |
+|---------------|---------------|
+| `User`, `Order`, `Invoice`, `Payment` | `Country`, `Currency`, `Permission`, `Role` (static reference data) |
+| `Comment`, `Document`, `Ticket` | Join tables (`user_roles`, `order_tags`) |
+| Any entity created/updated by end users | Configuration or seed data tables |
+
+Entities that need auditing extend `BaseAuditEntity`. Entities that don't simply extend nothing (or their own base class without audit fields).
+
+### Enable Auditing
+
+Create a config class in `config/`:
+
+```java
+@Configuration
+@EnableJpaAuditing
+public class JpaAuditingConfig {
+}
+```
+
+### Base Audit Entity
+
+Use a `@MappedSuperclass` to share audit fields across all entities:
+
+```java
+@Getter
+@Setter
+@MappedSuperclass
+@EntityListeners(AuditingEntityListener.class)
+public abstract class BaseAuditEntity {
+
+    @CreatedDate
+    @Column(nullable = false, updatable = false)
+    private Instant createdAt;
+
+    @LastModifiedDate
+    @Column(nullable = false)
+    private Instant updatedAt;
+
+    @CreatedBy
+    @Column(updatable = false)
+    private String createdBy;
+
+    @LastModifiedBy
+    private String updatedBy;
+}
+```
+
+Then extend it in your entities that need auditing:
+```java
+// ✅ Business entity — needs auditing
+@Entity
+@Table(name = "users")
+@Getter
+@Setter
+@NoArgsConstructor
+public class User extends BaseAuditEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false)
+    private String name;
+
+    @Column(nullable = false, unique = true)
+    private String email;
+}
+```
+
+Reference/lookup entities do **not** extend `BaseAuditEntity`:
+```java
+// ✅ Static reference data — no auditing needed
+@Entity
+@Table(name = "countries")
+@Getter
+@Setter
+@NoArgsConstructor
+public class Country {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, unique = true)
+    private String code;
+
+    @Column(nullable = false)
+    private String name;
+}
+```
+
+### AuditorAware — Track Who Made Changes
+
+Implement `AuditorAware` to automatically populate `@CreatedBy` and `@LastModifiedBy`:
+
+```java
+@Component
+public class SecurityAuditorAware implements AuditorAware<String> {
+
+    @Override
+    public Optional<String> getCurrentAuditor() {
+        return Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
+            .filter(Authentication::isAuthenticated)
+            .map(Authentication::getName)
+            .or(() -> Optional.of("system"));
+    }
+}
+```
+
+Register it in the auditing config:
+```java
+@Configuration
+@EnableJpaAuditing(auditorAwareRef = "securityAuditorAware")
+public class JpaAuditingConfig {
+}
+```
+
+<!-- CUSTOMIZE: If not using Spring Security, return a fixed value like "system" or extract from a custom request header -->
+
+### Audit Trail / History Tables (Optional)
+
+For compliance or debugging, use **Hibernate Envers** to automatically track all entity changes in history tables:
+
+```xml
+<dependency>
+    <groupId>org.hibernate.orm</groupId>
+    <artifactId>hibernate-envers</artifactId>
+</dependency>
+```
+
+Annotate entities that need full history:
+```java
+@Entity
+@Audited
+@Table(name = "orders")
+public class Order extends BaseAuditEntity {
+    // All changes are tracked in an orders_aud table
+}
+```
+
+Query audit history:
+```java
+@Service
+@RequiredArgsConstructor
+public class OrderAuditService {
+
+    private final EntityManager entityManager;
+
+    /**
+     * Returns all revisions of an order, newest first.
+     */
+    public List<Order> getOrderHistory(Long orderId) {
+        var reader = AuditReaderFactory.get(entityManager);
+        var revisions = reader.getRevisions(Order.class, orderId);
+        return revisions.stream()
+            .sorted(Comparator.reverseOrder())
+            .map(rev -> reader.find(Order.class, orderId, rev))
+            .toList();
+    }
+}
+```
+
+**Rules for auditing:**
+1. **Always enable `@EnableJpaAuditing`** when using `@CreatedDate` / `@LastModifiedDate` — they don't work without it.
+2. **Use `BaseAuditEntity`** as a superclass only for business entities that users create or modify — not for lookup/reference tables.
+3. **Implement `AuditorAware`** when you need to track who made changes (requires authentication context).
+4. **Use Envers only when required** — it adds a history table per audited entity, which increases storage and write overhead. Apply `@Audited` selectively to entities that need compliance-grade change tracking.
+5. **Add audit columns to Liquibase migrations** — `created_at`, `updated_at`, `created_by`, `updated_by`.
+
+---
+
 ## Performance — N+1 Prevention
 
 **N+1 queries are the #1 performance killer. Always prevent them.**
@@ -120,11 +359,16 @@ public interface UserRepository extends JpaRepository<User, Long> {
    ```properties
    spring.jpa.properties.hibernate.default_batch_fetch_size=20
    ```
-5. **Avoid fetching full entities** when only a few fields are needed — use projections.
-6. **Enable SQL logging in dev** to catch N+1 early:
+5. **Disable Open-in-View** — set `spring.jpa.open-in-view=false` in `application.properties`:
+   ```properties
+   spring.jpa.open-in-view=false
+   ```
+   Open-in-View keeps a Hibernate session open for the entire HTTP request, allowing lazy loading in controllers and views. This **hides N+1 bugs**, ties database connections to slow HTTP responses, and violates layered architecture. With it disabled, any lazy access outside a `@Transactional` service method throws `LazyInitializationException` — which forces you to fix the real problem (missing `JOIN FETCH` or `@EntityGraph`).
+6. **Avoid fetching full entities** when only a few fields are needed — use projections.
+7. **Enable SQL logging in dev** to catch N+1 early:
    ```properties
    spring.jpa.show-sql=true
    logging.level.org.hibernate.SQL=DEBUG
    logging.level.org.hibernate.orm.jdbc.bind=TRACE
    ```
-7. **Review every repository method** — if it touches a `@OneToMany` or `@ManyToOne`, it must use `@EntityGraph` or `JOIN FETCH`.
+8. **Review every repository method** — if it touches a `@OneToMany` or `@ManyToOne`, it must use `@EntityGraph` or `JOIN FETCH`.

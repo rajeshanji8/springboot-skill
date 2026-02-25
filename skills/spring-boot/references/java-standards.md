@@ -66,34 +66,54 @@ if (user.getRole() == Role.ADMIN) { ... }
 
 ## Javadoc
 
-**Every method must have Javadoc** — public, protected, and package-private.
+**Public API layer methods require Javadoc. Private helpers only need explanation if the logic is non-obvious.**
 
+Don't enforce Javadoc everywhere — over-enforcement creates noise that drowns out real documentation.
+
+**Required — public service methods, controller endpoints, utility methods:**
 ```java
 /**
- * Finds a user by their unique identifier.
+ * Deactivates a user account and revokes all active sessions.
+ * Sends a notification email if the user has email notifications enabled.
  *
  * @param id the user ID
- * @return the user response DTO
  * @throws ResourceNotFoundException if no user exists with the given ID
+ * @throws IllegalStateException if the user is already deactivated
  */
-public UserResponse findById(Long id) { ... }
+public void deactivateUser(Long id) { ... }
 ```
 
-Rules:
-- First line is a **concise summary** of what the method does.
-- Document every `@param`, `@return`, and `@throws`.
-- Private methods: Javadoc optional, but add a brief comment if the logic isn't obvious.
-- Classes: add a class-level Javadoc explaining purpose and responsibility.
-
+**Useless — states the obvious, adds zero value:**
 ```java
+// ❌ This is noise — the method name already says everything
 /**
- * Service responsible for user lifecycle operations — creation,
- * retrieval, updates, and deactivation.
+ * Gets user by id.
  */
-@Service
-@RequiredArgsConstructor
-public class UserService { ... }
+public User getById(Long id) { ... }
+
+// ❌ Restating the parameter name
+/**
+ * @param id the id
+ * @return the user
+ */
+public User findById(Long id) { ... }
 ```
+
+**Rules:**
+- **Public service methods, controller endpoints, and shared utility methods** — require Javadoc with `@param`, `@return`, `@throws` when the behavior is not immediately obvious from the method signature.
+- **Simple CRUD methods** (e.g., `findById`, `create`, `delete`) — Javadoc optional if the signature is self-documenting. Add it when there are side effects, business rules, or non-obvious exceptions.
+- **Private/internal helpers** — Javadoc optional. Add a brief comment only if the logic is complex, non-obvious, or encodes a business rule.
+- **Classes** — add a class-level Javadoc explaining purpose and responsibility:
+  ```java
+  /**
+   * Service responsible for user lifecycle operations — creation,
+   * retrieval, updates, and deactivation.
+   */
+  @Service
+  @RequiredArgsConstructor
+  public class UserService { ... }
+  ```
+- **Document every `@param`, `@return`, and `@throws`** — but only when they add information beyond what the name already tells you.
 
 ---
 
@@ -198,6 +218,50 @@ Prefer static imports for:
 - **Collections utilities**: `Collections.emptyList()`, `Collections.unmodifiableList()`
 
 Do **not** static-import ambiguous methods that could confuse readers.
+
+---
+
+## BigDecimal for Money and Financial Values
+
+**Never use `double` or `float` for money, prices, quantities, percentages, or any financial calculation.** Floating-point arithmetic introduces rounding errors that compound silently.
+
+```java
+// ❌ NEVER — floating-point ruins financial accuracy
+double price = 19.99;
+double tax = price * 0.07;  // 1.3993000000000002
+
+// ✅ Always use BigDecimal with explicit scale and rounding
+BigDecimal price = new BigDecimal("19.99");
+BigDecimal tax = price.multiply(new BigDecimal("0.07"))
+    .setScale(2, RoundingMode.HALF_UP);  // 1.40
+```
+
+**Rules:**
+1. **Always construct from `String`** — never from `double`: `new BigDecimal("19.99")` not `new BigDecimal(19.99)`.
+2. **Always set explicit scale and rounding mode** — every `multiply`, `divide`, and arithmetic operation must end with `.setScale(scale, RoundingMode.HALF_UP)` (or the appropriate rounding mode for your domain).
+3. **Use `compareTo()` for equality** — never `.equals()`. `BigDecimal("1.0").equals(BigDecimal("1.00"))` returns `false`.
+   ```java
+   // ❌ Wrong — scale-sensitive
+   if (price.equals(BigDecimal.ZERO)) { ... }
+
+   // ✅ Correct
+   if (price.compareTo(BigDecimal.ZERO) == 0) { ... }
+   ```
+4. **Define scale constants per domain** — don't scatter magic numbers:
+   ```java
+   public final class MoneyConstants {
+       public static final int CURRENCY_SCALE = 2;
+       public static final RoundingMode ROUNDING = RoundingMode.HALF_UP;
+
+       private MoneyConstants() {}
+   }
+   ```
+5. **Entity fields**: use `@Column(precision = 19, scale = 4)` for JPA:
+   ```java
+   @Column(nullable = false, precision = 19, scale = 4)
+   private BigDecimal price;
+   ```
+6. **This applies to**: stock prices, portfolio values, order totals, tax calculations, commission rates, interest rates, exchange rates — anything involving money or financial precision.
 
 ---
 

@@ -50,9 +50,9 @@ com.example.appname
 4. **One `@SpringBootApplication` class** — keep it clean, no extra beans there.
 5. **Configuration in dedicated `config/` classes** — not scattered across the codebase.
 6. **ALL `@Bean` definitions live in `config/` package only** — controllers, services, and other packages must never define beans. This includes `WebClient`, `RestTemplate`, `ObjectMapper`, security filters, CORS configs, etc.
-7. **Global exception handling is mandatory** — every project must have a `@RestControllerAdvice` in the `exception/` package (see [error-handling.md](references/error-handling.md)).
-8. **Use MapStruct or manual mappers in `mapper/` package** — see [mapper-conventions.md](references/mapper-conventions.md) for mapping patterns.
-9. **Externalize configuration with `@ConfigurationProperties`** — see [configuration-properties.md](references/configuration-properties.md).
+7. **Global exception handling is mandatory** — every project must have a `@RestControllerAdvice` in the `exception/` package (see [error-handling.md](error-handling.md)).
+8. **Use MapStruct or manual mappers in `mapper/` package** — see [mapper-conventions.md](mapper-conventions.md) for mapping patterns.
+9. **Externalize configuration with `@ConfigurationProperties`** — see [configuration-properties.md](configuration-properties.md).
 
 ---
 
@@ -70,10 +70,29 @@ src/main/resources/
 └── static/                             # Static assets (if any)
 ```
 
+---
+
+## Dev Scripts
+
+**Every project must have a `start.sh` at the project root.** See [dev-scripts.md](dev-scripts.md) for the full script. On Windows, use Git Bash or WSL.
+
+```
+my-app/
+├── start.sh                    # chmod 755 — build + start + show URLs
+├── pom.xml
+├── docker-compose.yml
+├── Dockerfile
+├── .dockerignore
+├── .gitignore
+└── src/
+```
+
+Usage: `./start.sh` → builds, starts in Docker, waits for health, prints Swagger URL. See [dev-scripts.md](dev-scripts.md) for all options.
+
 **Rules:**
 - **Always use `application.properties`** — no YAML config files (rarely go for `.yaml`).
 - **No profiles** (`application-dev.properties`, `application-prod.properties`). Use a single `application.properties` with environment variable placeholders for values that differ per environment.
-- **Include comprehensive logging config** in `application.properties` so users can toggle to `DEBUG` when needed (see [logging.md](references/logging.md) for full Logback setup):
+- **Include comprehensive logging config** in `application.properties` so users can toggle to `DEBUG` when needed (see [logging.md](logging.md) for full Logback setup):
   ```properties
   # ===== Logging =====
   logging.level.root=INFO
