@@ -115,11 +115,12 @@ Read [references/mapper-conventions.md](references/mapper-conventions.md) for fu
 ### Testing
 Read [references/testing.md](references/testing.md) for full details.
 - Every service method gets a unit test — happy path + one failure case minimum
-- Every controller endpoint gets a `@WebMvcTest` slice test
+- Every controller endpoint gets a `@WebMvcTest` slice test — count endpoints, then count test methods; every endpoint MUST have at least one test
 - Use `@MockitoBean` (Spring Boot 3.4+) in slice tests — `@MockBean` is deprecated, NEVER use it
 - Use AssertJ for assertions, Mockito for mocking — JUnit 5 + `@ExtendWith(MockitoExtension.class)`
 - Test naming: `should{Expected}When{Condition}`
 - No `Thread.sleep` — use Awaitility for async assertions
+- Include `spring-boot-testcontainers` and `org.testcontainers:postgresql` (test scope) for integration/repository tests — never rely on H2 as a substitute for a real database
 
 ### Dependencies
 Read [references/dependencies.md](references/dependencies.md) for full details.
@@ -201,3 +202,6 @@ Read [references/dev-scripts.md](references/dev-scripts.md) for full details.
 19. `<java.version>21</java.version>` in pom.xml — not 17, not 22
 20. ALL entities extend `BaseEntity` — no standalone audit fields
 21. Count every public service method and every controller endpoint — verify each has at least one test. If any are missing, generate them now
+22. Every controller endpoint has at least one `@WebMvcTest` method — list each endpoint and its corresponding test to confirm
+23. At least one `@ConfigurationProperties` record with `@Validated` exists if the app defines any custom `app.*` properties — do not read raw keys with `@Value` when 3+ related properties exist
+24. `spring-boot-testcontainers` and `org.testcontainers:postgresql` present in pom.xml (test scope) for integration/repository tests

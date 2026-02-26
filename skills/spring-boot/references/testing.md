@@ -6,7 +6,7 @@ Follow these conventions when writing tests for a Spring Boot application.
 
 ## TLDR — Mandatory Rules
 - Every service method gets a unit test (happy path + one failure case minimum)
-- Every controller endpoint gets a `@WebMvcTest` slice test
+- Every controller endpoint gets a `@WebMvcTest` slice test — count endpoints, then count test methods; every endpoint MUST have at least one test
 - Use AssertJ for assertions, Mockito for mocking — JUnit 5 + `@ExtendWith(MockitoExtension.class)`
 - Test naming: `should{Expected}When{Condition}`
 - No `Thread.sleep` in tests — use Awaitility for async assertions

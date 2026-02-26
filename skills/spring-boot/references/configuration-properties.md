@@ -6,7 +6,7 @@ Follow these conventions for externalizing and binding configuration in Spring B
 
 ## TLDR — Mandatory Rules
 - Single `application.properties` file — no profiles, no YAML
-- `@ConfigurationProperties` for 3+ related properties; `@Value` only for simple one-off values
+- `@ConfigurationProperties` for 3+ related properties; `@Value` only for simple one-off values. If the app defines ANY custom `app.*` properties, at least one `@ConfigurationProperties` class MUST exist
 - Always add `@Validated` on `@ConfigurationProperties` classes — fail fast on bad config
 - Use `${ENV_VAR:default}` syntax for environment-specific values
 - All `@ConfigurationProperties` classes live in `config/` package
