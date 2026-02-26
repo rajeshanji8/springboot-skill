@@ -8,6 +8,11 @@ A reusable **Spring Boot 3.x** skill for AI coding agents. Install it once and e
 
 ## Quick Install
 
+**TLDR — run this in your project directory:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/rajeshanji8/springboot-skill/main/install.sh | bash -s -- . --with-instructions
+```
+
 ### All agents — project level (recommended)
 
 **macOS / Linux / Git Bash:**
