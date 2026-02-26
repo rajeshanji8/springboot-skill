@@ -29,5 +29,6 @@ Key non-negotiable conventions (full list in SKILL.md):
 - Every endpoint MUST have Swagger annotations (`@Tag`, `@Operation`, `@ApiResponses`)
 - Do NOT use Spring HATEOAS — return plain DTOs
 - `@MockitoBean` in slice tests — `@MockBean` is deprecated
+- At least one `@ConfigurationProperties` record with `@Validated` if the app defines custom `app.*` properties
 - Every project must have `start.sh` at root
 <!-- springboot-skill:end -->
