@@ -5,7 +5,8 @@ When generating or modifying a Spring Boot project, follow this package layout a
 ---
 
 ## TLDR — Mandatory Rules
-- Layered packages: `config/`, `controller/`, `service/`, `repository/`, `model/`, `dto/`, `exception/`, `mapper/`, `util/`
+- Java 21 (LTS) — set `<java.version>21</java.version>` in pom.xml. Not 17, not 22
+- Layered packages: `config/`, `controller/`, `service/`, `repository/`, `model/{entity,dto,enums}`, `exception/`, `mapper/`, `util/`
 - No business logic in controllers — controllers delegate to services only
 - ALL `@Bean` definitions live in `config/` package only — never in services or controllers
 - Single `application.properties` — no profiles, no YAML; use env var placeholders

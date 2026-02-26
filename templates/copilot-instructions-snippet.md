@@ -9,7 +9,9 @@ before generating any Java code. Every rule in the skill and its referenced docs
 — not a suggestion.
 
 Key non-negotiable conventions (full list in SKILL.md):
+- Java 21 (LTS) — `<java.version>21</java.version>` in pom.xml. Not 17, not 22
 - Java records for ALL DTOs, `@Getter`/`@Setter` on entities, NEVER `@Data` on entities
+- Override `toString()` on every entity AND every record DTO with `JsonUtil.toJson(this)` — records auto-generate non-JSON format
 - Constructor injection via `@RequiredArgsConstructor` — NEVER `@Autowired` on fields
 - `@Slf4j` for logging — NEVER `LoggerFactory.getLogger()` or `System.out.println()`
 - All `@Bean` definitions in `config/` package only
@@ -22,6 +24,7 @@ Key non-negotiable conventions (full list in SKILL.md):
 - Liquibase for DB migrations — never Flyway, never `hibernate.ddl-auto=update/create`
 - `spring.jpa.open-in-view=false` — always disabled
 - `@EnableJpaAuditing` required when using `@CreatedDate` / `@LastModifiedDate`
+- ALL entities MUST extend `BaseEntity` — no standalone audit fields
 - All relationships default to `FetchType.LAZY` — non-negotiable
 - Every endpoint MUST have Swagger annotations (`@Tag`, `@Operation`, `@ApiResponses`)
 - Do NOT use Spring HATEOAS — return plain DTOs

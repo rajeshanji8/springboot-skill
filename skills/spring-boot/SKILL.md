@@ -35,7 +35,8 @@ For every Spring Boot task, determine which areas apply and **READ and FOLLOW AL
 These rules apply to EVERY file in EVERY Spring Boot task. Violating any of these is a bug.
 
 ### Project Structure
-- Package layout: `com.company.module.{config,controller,service,repository,model,dto,exception,mapper,util}`
+- Java 21 (LTS) — set `<java.version>21</java.version>` in pom.xml. Not 17, not 22
+- Package layout: `com.company.module.{config,controller,service,repository,model/{entity,dto,enums},exception,mapper,util}`
 - No business logic in controllers — controllers delegate to services only
 - ALL `@Bean` definitions live in `config/` package only — never in controllers, services, or other packages
 - Single `application.properties` — no profiles (`application-dev.properties`), no YAML; use `${ENV_VAR:default}` for per-environment values
@@ -47,11 +48,11 @@ These rules apply to EVERY file in EVERY Spring Boot task. Violating any of thes
 - Java records for all immutable DTOs — suffix with `Request`/`Response`
 - NEVER use `@Data` on JPA entities — use `@Getter`, `@Setter`, `@NoArgsConstructor` individually
 - Entities NEVER cross the service boundary — controllers always receive/return DTOs, services call mappers
-- Override `toString()` on every DTO/entity to return JSON via `JsonUtil.toJson(this)` — NEVER log inside `toString()`
+- Override `toString()` on every entity AND every Java record DTO — records auto-generate non-JSON `toString()`, you MUST still override it with `JsonUtil.toJson(this)`. NEVER log inside `toString()`
 - `@JsonIgnore` on every sensitive field (password, token, secret, apiKey)
 - Use `var` for local variables when the type is obvious from the right side
 - Services MUST be stateless — no mutable shared state in Spring beans, no request-scoped data in instance fields
-- ALWAYS return `Optional<T>` from single-lookup repository/service methods — never return `null`
+- Repository methods return `Optional<Entity>` for single lookups. Service methods call `.orElseThrow()` and return DTOs directly — NEVER return `Optional` or `null` from services
 
 ### Java Standards
 - Max 120 characters per line, max 1,000 lines per file
@@ -99,6 +100,7 @@ Read [references/database-jpa.md](references/database-jpa.md) for full details.
 - `spring.jpa.hibernate.ddl-auto=validate` — Hibernate must never modify the schema
 - `spring.jpa.open-in-view=false` — hides N+1 bugs and violates layered architecture
 - `@Transactional` on service methods only — never on repositories or controllers; `readOnly = true` for reads
+- ALL entities MUST extend `BaseEntity` (audit superclass with `@CreatedDate`, `@LastModifiedDate`) — no exceptions, even if an entity doesn't logically need `updatedAt`
 - ALWAYS enable `@EnableJpaAuditing` in a `@Configuration` class when using `@CreatedDate` / `@LastModifiedDate`
 - Set `spring.jpa.properties.hibernate.default_batch_fetch_size=20`
 
@@ -182,7 +184,7 @@ Read [references/dev-scripts.md](references/dev-scripts.md) for full details.
 2. No JPA entities returned from controllers — always return DTOs
 3. `GlobalExceptionHandler` exists with `@RestControllerAdvice`
 4. All DTOs are Java records (unless MapStruct `@MappingTarget` needed)
-5. `toString()` overridden with `JsonUtil.toJson(this)` on DTOs/entities
+5. `toString()` overridden with `JsonUtil.toJson(this)` on EVERY entity AND EVERY record DTO — records auto-generate non-JSON format, override is still required
 6. Swagger annotations (`@Tag`, `@Operation`, `@ApiResponses`) on every endpoint
 7. `@Slf4j` for logging — no `LoggerFactory.getLogger()` or `System.out`
 8. All `@Bean` definitions are in `config/` package only
@@ -196,3 +198,6 @@ Read [references/dev-scripts.md](references/dev-scripts.md) for full details.
 16. No `application-{profile}.properties` files — single `application.properties` only
 17. No `@MockBean` — use `@MockitoBean` (Spring Boot 3.4+)
 18. No Spring HATEOAS — plain DTOs only
+19. `<java.version>21</java.version>` in pom.xml — not 17, not 22
+20. ALL entities extend `BaseEntity` — no standalone audit fields
+21. Count every public service method and every controller endpoint — verify each has at least one test. If any are missing, generate them now

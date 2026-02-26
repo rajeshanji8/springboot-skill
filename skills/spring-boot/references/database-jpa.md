@@ -11,6 +11,7 @@ Follow these conventions for database access and JPA entity design in Spring Boo
 - `spring.jpa.open-in-view=false` — hides N+1 bugs, must be disabled
 - `@Transactional` on service methods only — `readOnly = true` for reads
 - Never use `@Data` on entities — use `@Getter`, `@Setter`, `@NoArgsConstructor`
+- ALL entities MUST extend `BaseEntity` (audit superclass with `@CreatedDate`, `@LastModifiedDate`) — no exceptions
 - ALWAYS enable `@EnableJpaAuditing` in a `@Configuration` class when using `@CreatedDate` / `@LastModifiedDate`
 - Set `spring.jpa.properties.hibernate.default_batch_fetch_size=20` — prevents N+1 in collection loading
 
