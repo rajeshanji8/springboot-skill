@@ -4,6 +4,14 @@ Every Spring Boot project must include a `start.sh` at the project root that bui
 
 ---
 
+## TLDR — Mandatory Rules
+- Every project MUST have `start.sh` at root — mandatory, not optional
+- `./start.sh` builds and starts via Docker (default); `--locally` for Maven spring-boot:run
+- Health check gates readiness — waits for `/actuator/health` 200 before declaring success
+- `start.sh` must be in version control with execute permissions (`chmod 755`)
+
+---
+
 ## start.sh
 
 **This file is mandatory in every project.** Place it at the project root with `755` permissions.

@@ -4,6 +4,15 @@ Follow these conventions when making outbound HTTP calls from a Spring Boot appl
 
 ---
 
+## TLDR — Mandatory Rules
+- Use `RestClient` for all synchronous HTTP calls — never `RestTemplate` in new code
+- Define client beans in `config/` — one bean per external service with its own timeouts
+- Always configure connect (5s) and read (10s) timeouts — no HTTP call without timeouts
+- Handle errors with `.onStatus()` — never let raw `RestClientResponseException` reach users
+- Externalize base URLs, API keys, and timeouts via `${ENV_VAR:default}`
+
+---
+
 ## Strategy
 
 1. **Use `RestClient`** (Spring 6.1+) as the default HTTP client — it's the modern, synchronous replacement for `RestTemplate`.

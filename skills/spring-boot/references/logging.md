@@ -4,6 +4,17 @@ Use **Logback** (Spring Boot's default) with a custom `logback-spring.xml` for f
 
 ---
 
+## TLDR — Mandatory Rules
+- Always use `@Slf4j` — never `LoggerFactory.getLogger(...)` manually (exception: `AsyncUncaughtExceptionHandler` where `@Slf4j` is unavailable)
+- Every project must have `logback-spring.xml` with 3 appenders: CONSOLE + FILE + ERROR_FILE
+- Parameterized logging: `log.info("id={}", id)` — never string concatenation
+- Never log and throw — either log or throw, not both
+- Never use `System.out.println()` or `e.printStackTrace()` — always use the SLF4J logger
+- Every ERROR must include the exception object: `log.error("msg", ex)`
+- Add MDC request correlation (requestId, userId) in a servlet filter for all log entries
+
+---
+
 ## Setup
 
 1. **Always use Lombok's `@Slf4j`** — this is the only way to get a logger. Never use `LoggerFactory.getLogger(...)` manually.
@@ -208,7 +219,7 @@ Or use **Logstash Logback Encoder** (preferred — more features):
 
 ### logback-spring.xml with JSON for Production
 
-Use Spring profiles in logback to switch between human-readable (local) and JSON (production):
+Use logback-spring.xml `<springProfile>` tags to switch between human-readable (local) and JSON (production). Note: this uses Spring's logback integration — NOT Spring profiles (`application-{profile}.properties`), which are banned. The single `application.properties` controls the active profile via `${SPRING_PROFILES_ACTIVE:local}`:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>

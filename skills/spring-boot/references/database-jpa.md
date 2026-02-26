@@ -4,13 +4,25 @@ Follow these conventions for database access and JPA entity design in Spring Boo
 
 ---
 
+## TLDR — Mandatory Rules
+- Default ALL relationships to `FetchType.LAZY` — non-negotiable
+- Liquibase (YAML format) for all migrations — never Flyway, never modify existing changesets
+- `ddl-auto=validate` in production — never `update` or `create`
+- `spring.jpa.open-in-view=false` — hides N+1 bugs, must be disabled
+- `@Transactional` on service methods only — `readOnly = true` for reads
+- Never use `@Data` on entities — use `@Getter`, `@Setter`, `@NoArgsConstructor`
+- ALWAYS enable `@EnableJpaAuditing` in a `@Configuration` class when using `@CreatedDate` / `@LastModifiedDate`
+- Set `spring.jpa.properties.hibernate.default_batch_fetch_size=20` — prevents N+1 in collection loading
+
+---
+
 ## Entity Design
 
 1. **Use `@Entity`** on all persistent classes. Keep them in `model/entity/`.
 2. **Use `Long` for IDs** with `@GeneratedValue(strategy = GenerationType.IDENTITY)`.
 3. **Add audit fields to business entities** — `createdAt`, `updatedAt`, `createdBy`, `updatedBy`. Not every table needs auditing — lookup tables, configuration tables, and join tables typically don't. Apply audit fields to entities that represent **business objects users create or modify** (e.g., `User`, `Order`, `Invoice`), not to static reference data (e.g., `Country`, `Currency`, `Permission`).
 4. **Use `@MappedSuperclass`** with `@EntityListeners(AuditingEntityListener.class)` for shared audit fields — see [JPA Auditing](#jpa-auditing) section below.
-5. **Avoid Lombok `@Data`** on entities — use `@Getter`, `@Setter`, `@NoArgsConstructor` individually.
+5. **NEVER use Lombok `@Data`** on entities — use `@Getter`, `@Setter`, `@NoArgsConstructor` individually.
 6. **Override `equals()` and `hashCode()`** based on the business key or ID (not all fields).
 
 ```java
@@ -46,7 +58,7 @@ public class User {
 ## Relationships
 
 - **Default to `FetchType.LAZY`** for all associations.
-- **Avoid bidirectional relationships** unless absolutely needed. Prefer owning side only.
+- **NEVER create bidirectional relationships** unless the inverse side is required for a query. Always prefer unidirectional with owning side only.
 - Use `@JoinColumn` explicitly — don't rely on defaults.
 - When bidirectional is needed, manage both sides:
   ```java

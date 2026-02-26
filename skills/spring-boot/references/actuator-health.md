@@ -4,6 +4,15 @@ Follow these conventions for monitoring, health checks, and metrics in Spring Bo
 
 ---
 
+## TLDR — Mandatory Rules
+- Every project must include `spring-boot-starter-actuator` — non-negotiable
+- Enable liveness and readiness probes (`management.endpoint.health.probes.enabled=true`)
+- Never put external dependency checks in liveness probes — only in readiness
+- Write custom health indicators for every external dependency (DB, APIs, brokers)
+- Always enable graceful shutdown: `server.shutdown=graceful` with 30s timeout
+
+---
+
 ## Dependencies
 
 Spring Boot Actuator is included with:

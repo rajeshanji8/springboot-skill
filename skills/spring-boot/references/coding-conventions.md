@@ -4,6 +4,17 @@ Follow these coding standards when writing or modifying Java code in a Spring Bo
 
 ---
 
+## TLDR — Mandatory Rules
+- Use constructor injection (`@RequiredArgsConstructor`) — NEVER field `@Autowired`
+- Lombok is mandatory: `@Slf4j` for logging, `@Getter`/`@Setter` for accessors — never manual getters/setters
+- Java records for all immutable DTOs — never `@Data` on entities
+- Override `toString()` on every DTO/entity to return JSON via `JsonUtil.toJson(this)` — NEVER log inside `toString()`
+- Strict layer discipline: no business logic in controllers, no entities in API responses
+- `@JsonIgnore` on every sensitive field (password, token, secret, apiKey)
+- Services MUST be stateless — no mutable shared state in Spring beans, no request-scoped data in instance fields
+
+---
+
 ## Naming
 
 | Element | Convention | Example |
@@ -31,7 +42,7 @@ Follow these coding standards when writing or modifying Java code in a Spring Bo
    var user = userRepository.findById(id);
    ```
 
-3. **Prefer `Optional` returns** from repository/service methods for single lookups. Never pass `Optional` as a method parameter.
+3. **ALWAYS return `Optional<T>`** from repository/service methods for single lookups. Never pass `Optional` as a method parameter.
 
 4. **Use constructor injection** — no `@Autowired` on fields.
    ```java

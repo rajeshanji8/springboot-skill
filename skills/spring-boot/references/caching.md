@@ -4,6 +4,15 @@ Follow these conventions for caching in Spring Boot applications.
 
 ---
 
+## TLDR — Mandatory Rules
+- Cache at the service layer only — never `@Cacheable` on controllers or repositories
+- ALWAYS define an explicit TTL — never cache indefinitely. Default: 10 minutes if no business requirement
+- Evict on every mutation — `@CacheEvict` or `@CachePut` on create/update/delete
+- Cache DTOs, not entities — lazy proxies break outside transactions
+- Self-invocation bypasses cache proxy — call `@Cacheable` methods from another bean
+
+---
+
 ## Dependencies
 
 Add Spring Cache starter:

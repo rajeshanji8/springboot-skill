@@ -4,6 +4,15 @@ When generating or modifying a Spring Boot project, follow this package layout a
 
 ---
 
+## TLDR — Mandatory Rules
+- Layered packages: `config/`, `controller/`, `service/`, `repository/`, `model/`, `dto/`, `exception/`, `mapper/`, `util/`
+- No business logic in controllers — controllers delegate to services only
+- ALL `@Bean` definitions live in `config/` package only — never in services or controllers
+- Single `application.properties` — no profiles, no YAML; use env var placeholders
+- Every project must have `start.sh`, `.gitignore`, `GlobalExceptionHandler`
+
+---
+
 ## Build Tool
 
 - Use **Maven** with the standard `pom.xml`.

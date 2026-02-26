@@ -4,6 +4,15 @@ Canonical `pom.xml` dependency list for Spring Boot 3.x projects using this skil
 
 ---
 
+## TLDR — Mandatory Rules
+- Use Spring Boot BOM versions — only pin third-party libs (MapStruct, SpringDoc, Logstash Encoder)
+- Lombok: `<optional>true</optional>`, JDBC drivers: `<scope>runtime</scope>`, test deps: `<scope>test</scope>`
+- Annotation processor order: Lombok → lombok-mapstruct-binding → MapStruct
+- No snapshot versions on main branch
+- Add dependencies only when needed — don't blindly copy the full template
+
+---
+
 ## Parent POM
 
 ```xml

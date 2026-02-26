@@ -4,6 +4,15 @@ Follow these conventions for containerizing Spring Boot applications and running
 
 ---
 
+## TLDR — Mandatory Rules
+- Always use multi-stage builds — JDK for build, JRE for runtime (Eclipse Temurin)
+- Run as non-root user — never run containers as root in production
+- Use `-XX:MaxRAMPercentage=75.0` — never hardcode `-Xmx`/`-Xms`
+- Always include `HEALTHCHECK`, `.dockerignore`, and resource limits
+- Pin image versions — `postgres:16-alpine` not `postgres:latest`
+
+---
+
 ## Dockerfile
 
 Use a **multi-stage build** to keep the final image small:
@@ -230,7 +239,6 @@ services:
       DATABASE_URL: jdbc:postgresql://postgres:5432/mydb
       DATABASE_USERNAME: postgres
       DATABASE_PASSWORD: postgres
-      SPRING_PROFILES_ACTIVE: ""
     depends_on:
       postgres:
         condition: service_healthy

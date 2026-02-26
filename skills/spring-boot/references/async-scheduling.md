@@ -4,6 +4,15 @@ Follow these conventions for asynchronous execution and scheduled tasks in Sprin
 
 ---
 
+## TLDR — Mandatory Rules
+- Always define a custom `TaskExecutor` bean — never rely on Spring's default single-thread executor
+- `@Async` only works on public methods called from another bean — same-class calls bypass the proxy
+- Handle async exceptions via `AsyncUncaughtExceptionHandler` — failures must not vanish silently
+- Scheduled tasks must be idempotent — use ShedLock for distributed locking
+- Externalize cron expressions into `application.properties` — never hardcode schedules
+
+---
+
 ## Enable Async and Scheduling
 
 Add both to a configuration class in `config/`:

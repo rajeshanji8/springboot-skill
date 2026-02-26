@@ -4,6 +4,16 @@ Follow these conventions when writing tests for a Spring Boot application.
 
 ---
 
+## TLDR — Mandatory Rules
+- Every service method gets a unit test (happy path + one failure case minimum)
+- Every controller endpoint gets a `@WebMvcTest` slice test
+- Use AssertJ for assertions, Mockito for mocking — JUnit 5 + `@ExtendWith(MockitoExtension.class)`
+- Test naming: `should{Expected}When{Condition}`
+- No `Thread.sleep` in tests — use Awaitility for async assertions
+- Don't test framework behavior — test your custom queries and business logic
+
+---
+
 ## Test Structure
 
 ```
@@ -51,7 +61,7 @@ class UserServiceTest {
 
 ### 2. Controller Slice Tests
 - Use **`@WebMvcTest`** to test controllers without full context.
-- Mock service layer with `@MockBean`.
+- Mock service layer with `@MockitoBean` (Spring Boot 3.4+). `@MockBean` is deprecated — NEVER use it.
 - Use `MockMvc` to send HTTP requests.
 
 ```java
@@ -61,7 +71,7 @@ class UserControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
+    @MockitoBean
     private UserService userService;
 
     @Test

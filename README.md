@@ -20,6 +20,14 @@ curl -fsSL https://raw.githubusercontent.com/rajeshanji8/springboot-skill/main/i
 irm https://raw.githubusercontent.com/rajeshanji8/springboot-skill/main/install.ps1 | iex
 ```
 
+### With Copilot instruction reinforcement (optional)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/rajeshanji8/springboot-skill/main/install.sh | bash -s -- --with-instructions ~/projects/my-api
+```
+
+This appends always-on rules to `copilot-instructions.md` and adds path-specific instruction files. See [Copilot Reinforcement Layer](#copilot-reinforcement-layer-optional) below.
+
 ### Specific agent only
 
 ```bash
@@ -49,6 +57,9 @@ cd springboot-skill
 # Install for all agents in a project
 ./install.sh ~/projects/my-api
 
+# With Copilot instruction reinforcement
+./install.sh --with-instructions ~/projects/my-api
+
 # Install for Claude only
 ./install.sh --agent claude ~/projects/my-api
 
@@ -57,6 +68,7 @@ cd springboot-skill
 
 # Windows
 .\install.ps1 C:\projects\my-api
+.\install.ps1 -WithInstructions C:\projects\my-api
 .\install.ps1 -Agent claude C:\projects\my-api
 ```
 
@@ -88,6 +100,48 @@ The skill is a set of markdown files that AI agents read on demand. The entry po
 | Dependencies | `dependencies.md` | Canonical `pom.xml` dependency list |
 
 Agents load only the reference they need for the current task — they don't read everything at once.
+
+---
+
+## Copilot Reinforcement Layer (Optional)
+
+The skill is designed to be **self-sufficient** — `SKILL.md` contains all critical rules inline and instructs the agent to read reference files before coding. No additional files are required.
+
+For **maximum compliance** with GitHub Copilot, the installer supports `--with-instructions` which adds two optional reinforcement layers:
+
+### What `--with-instructions` Does
+
+| Action | Effect |
+|--------|--------|
+| **Appends** to `.github/copilot-instructions.md` | Adds a snippet with the top 15 rules, wrapped in `<!-- springboot-skill:start/end -->` markers for clean uninstall. Safe if the file already exists — your existing instructions are preserved. |
+| **Copies** `.instructions.md` files to `.github/instructions/` | Path-specific rules that auto-trigger when Copilot touches matching files. Skips files that already exist. |
+
+### Path-Specific Instruction Files
+
+| File | Triggers On | Enforces |
+|------|-------------|----------|
+| `java-spring.instructions.md` | `**/*.java` | Injection, Lombok, DTO/entity rules, code style |
+| `pom.instructions.md` | `**/pom.xml` | BOM versions, scopes, processor order |
+| `docker.instructions.md` | `**/Dockerfile` | Multi-stage builds, non-root, health checks |
+| `test.instructions.md` | `**/*Test.java` | Test patterns, AssertJ, naming conventions |
+
+### How the Layers Work Together
+
+```
+Request arrives
+  │
+  ├─ copilot-instructions.md          ← Always loaded (top 15 rules)      [--with-instructions]
+  ├─ instructions/java-spring.md      ← Auto-loaded when *.java in context [--with-instructions]
+  ├─ skills/spring-boot/SKILL.md      ← Loaded when skill matches prompt   [default]
+  │    ├─ Hard rules (inline)         ← Agent sees these immediately
+  │    ├─ Pre-flight checklist        ← Forces reading of reference files
+  │    └─ Verification checklist      ← Self-check before completing
+  └─ references/*.md                  ← Deep-dive docs (TLDR at top)       [default]
+```
+
+### Template Files
+
+All reinforcement files live in `templates/` in this repo. You can also copy them manually — see [templates/README.md](templates/README.md) for details.
 
 ---
 

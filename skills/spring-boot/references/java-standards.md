@@ -4,6 +4,18 @@ Low-level Java coding standards that apply to every class, method, and variable.
 
 ---
 
+## TLDR — Mandatory Rules
+- Max 120 characters per line, max 1,000 lines per file
+- Never use wildcard imports — always import the specific class
+- Use `BigDecimal` (constructed from `String`) for all financial values — never `double`/`float`
+- Never return `null` — use `Optional<T>`, empty collections, or throw exceptions
+- No consecutive uppercase letters in names: `HttpClient` not `HTTPClient`
+- Use static imports for test assertions and common utilities
+- NEVER use `System.out.println()` or `System.err.println()` — always use the SLF4J logger
+- Keep cyclomatic complexity ≤ 16 per method — break complex methods into smaller ones
+
+---
+
 ## Line Length
 
 **Maximum line length is 120 characters** — no exceptions. If a line exceeds 120 characters, break it.

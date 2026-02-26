@@ -4,6 +4,15 @@ Follow these conventions for securing a Spring Boot application.
 
 ---
 
+## TLDR — Mandatory Rules
+- All security config lives in `SecurityConfig` in `config/` — no security annotations in controllers
+- Never commit secrets to source control — use env vars or vault
+- Hash passwords with `BCryptPasswordEncoder` — never store plaintext
+- Return 401 for missing auth, 403 for insufficient permissions — be precise
+- Actuator health/info are public; lock down everything else behind auth
+
+---
+
 ## Dependencies
 
 Use **Spring Security** as the foundation. Add:
@@ -33,7 +42,8 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/actuator/**").permitAll()
+                .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                .requestMatchers("/actuator/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
             .build();
@@ -85,7 +95,7 @@ app.cors.allowed-methods=GET,POST,PUT,DELETE,PATCH
 ## Rules
 
 1. **No security config in controllers** — all rules live in `SecurityConfig`.
-2. **Use method-level security sparingly** — `@PreAuthorize` only when URL-based rules aren't enough.
+2. **NEVER use `@PreAuthorize`** unless URL-based rules in `SecurityConfig` can't express the requirement.
 3. **Hash passwords** with `BCryptPasswordEncoder` — never store plaintext.
 4. **Validate all input** — security starts at the API boundary (see [api-design.md](api-design.md)).
 5. **Return 401 for missing auth, 403 for insufficient permissions** — be precise.

@@ -4,6 +4,15 @@ Follow these conventions for mapping between entities and DTOs in Spring Boot.
 
 ---
 
+## TLDR — Mandatory Rules
+- All mapping logic lives in `mapper/` package — never in controllers or services directly
+- ALWAYS use MapStruct with `componentModel = "spring"` — no other mapper library
+- Entities never cross the service boundary — services return DTOs via mappers
+- One mapper per aggregate root (`UserMapper`, `OrderMapper`)
+- Use `@BeanMapping(nullValuePropertyMappingStrategy = IGNORE)` for partial updates (PATCH)
+
+---
+
 ## Strategy
 
 **All mapping logic lives in the `mapper/` package — never in controllers or services.**

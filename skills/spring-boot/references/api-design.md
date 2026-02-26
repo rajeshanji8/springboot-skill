@@ -4,6 +4,17 @@ Follow these conventions when building REST APIs with Spring Boot.
 
 ---
 
+## TLDR — Mandatory Rules
+- URI versioning: always prefix with `/api/v1/`, lowercase hyphen-separated plural nouns
+- Every endpoint MUST have Swagger/OpenAPI annotations (`@Tag`, `@Operation`, `@ApiResponses`)
+- Always use DTOs (Java records) — never bind directly to entities
+- `@Valid` on `@RequestBody` + `@Validated` on the controller class — both required
+- Every list endpoint must define a default sort via `@PageableDefault` or `@SortDefault`
+- Never modify the contract of a released API version
+- Do NOT use Spring HATEOAS — return plain DTOs, document endpoints in Swagger/OpenAPI
+
+---
+
 ## URL Conventions
 
 - Use **lowercase, hyphen-separated** paths: `/api/user-profiles`
@@ -119,7 +130,7 @@ Share business logic in the service layer — only the controller + DTOs change 
 ## Request / Response DTOs
 
 - **Always use DTOs** — never bind directly to entities.
-- Use **Java records** for immutability. If records aren't suitable, use plain objects.
+- Use **Java records** for ALL DTOs. Use mutable classes ONLY when MapStruct `@MappingTarget` requires setters (see [mapper-conventions.md](mapper-conventions.md)).
 - Separate `CreateXRequest`, `UpdateXRequest`, and separate `CreateXResponse`, `UpdateXResponse`.
 - For entity ↔ DTO mapping, see [mapper-conventions.md](mapper-conventions.md).
 

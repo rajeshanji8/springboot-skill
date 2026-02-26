@@ -4,6 +4,15 @@ Follow these conventions for consistent error handling across the Spring Boot ap
 
 ---
 
+## TLDR — Mandatory Rules
+- Every project MUST have a `@RestControllerAdvice` `GlobalExceptionHandler` — not optional
+- Use RFC 9457 Problem Details (`ProblemDetail`) for all error responses
+- Throw custom domain exceptions — never return null to signal errors
+- Never expose stack traces in API responses — log full exception server-side
+- Never log and throw — either log or throw, the global handler logs thrown exceptions
+
+---
+
 ## Strategy
 
 **Global exception handling is mandatory in every project — no exceptions.**

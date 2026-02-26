@@ -17,6 +17,8 @@ param(
 
     [switch]$User,
 
+    [switch]$WithInstructions,
+
     [switch]$Uninstall
 )
 
@@ -26,6 +28,9 @@ $GitHubRepo = "https://github.com/rajeshanji8/springboot-skill.git"
 $AllAgents = @("claude", "codex", "gemini", "cursor", "copilot")
 $CleanupTemp = $false
 $TempDir = $null
+
+$MarkerStart = "<!-- springboot-skill:start -->"
+$MarkerEnd = "<!-- springboot-skill:end -->"
 
 # --------------- RESOLVE SOURCE ---------------
 $ScriptDir = if ($MyInvocation.MyCommand.Path) {
@@ -105,6 +110,32 @@ foreach ($ag in $SelectedAgents) {
         } else {
             Write-Host "  No spring-boot skill found for $ag at $skillsDir" -ForegroundColor Yellow
         }
+        # Clean up Copilot instruction snippets/files added by -WithInstructions
+        if ($ag -eq "copilot") {
+            # Remove marker block from copilot-instructions.md
+            $copilotInstr = Join-Path $agentDir "copilot-instructions.md"
+            if ((Test-Path $copilotInstr) -and (Select-String -Path $copilotInstr -Pattern $MarkerStart -Quiet)) {
+                $content = Get-Content $copilotInstr -Raw
+                $pattern = "(?s)$([regex]::Escape($MarkerStart)).*?$([regex]::Escape($MarkerEnd))\r?\n?"
+                $content = [regex]::Replace($content, $pattern, "")
+                if ([string]::IsNullOrWhiteSpace($content)) {
+                    Remove-Item $copilotInstr -Force
+                    Write-Host "  Removed copilot-instructions.md (was empty after cleanup)" -ForegroundColor Green
+                } else {
+                    Set-Content -Path $copilotInstr -Value $content.TrimEnd() -NoNewline
+                    Write-Host "  Removed spring-boot snippet from copilot-instructions.md" -ForegroundColor Green
+                }
+            }
+            # Remove path-specific instruction files (only ours)
+            $instrDir = Join-Path $agentDir "instructions"
+            foreach ($fname in @("java-spring.instructions.md", "pom.instructions.md", "docker.instructions.md", "test.instructions.md", "properties.instructions.md", "liquibase.instructions.md")) {
+                $f = Join-Path $instrDir $fname
+                if (Test-Path $f) {
+                    Remove-Item $f -Force
+                    Write-Host "  Removed $fname" -ForegroundColor Green
+                }
+            }
+        }
     } else {
         Write-Host "  Installing for $ag at $InstallLevel level..."
         if (-not (Test-Path $skillsDir)) {
@@ -115,6 +146,52 @@ foreach ($ag in $SelectedAgents) {
         }
         Copy-Item (Join-Path $SourceSkillsDir "spring-boot") $targetDir -Recurse
         Write-Host "  Installed spring-boot skill for $ag into $targetDir" -ForegroundColor Green
+
+        # -WithInstructions: append snippet + copy path-specific files (Copilot only)
+        if ($ag -eq "copilot" -and $WithInstructions) {
+            $templatesDir = Join-Path $ScriptDir "templates"
+            if (Test-Path $templatesDir) {
+                # Append snippet to copilot-instructions.md (idempotent)
+                $copilotInstr = Join-Path $agentDir "copilot-instructions.md"
+                $snippetFile = Join-Path $templatesDir "copilot-instructions-snippet.md"
+                if (Test-Path $snippetFile) {
+                    if ((Test-Path $copilotInstr) -and (Select-String -Path $copilotInstr -Pattern $MarkerStart -Quiet)) {
+                        Write-Host "  Spring Boot snippet already present in copilot-instructions.md, skipping" -ForegroundColor Yellow
+                    } else {
+                        if (-not (Test-Path (Split-Path $copilotInstr))) {
+                            New-Item -ItemType Directory -Path (Split-Path $copilotInstr) -Force | Out-Null
+                        }
+                        # Append with blank line separator
+                        if ((Test-Path $copilotInstr) -and ((Get-Item $copilotInstr).Length -gt 0)) {
+                            Add-Content -Path $copilotInstr -Value ""
+                        }
+                        $snippet = Get-Content $snippetFile -Raw
+                        Add-Content -Path $copilotInstr -Value $snippet
+                        Write-Host "  Appended spring-boot snippet to copilot-instructions.md" -ForegroundColor Green
+                    }
+                }
+
+                # Copy path-specific .instructions.md files (skip if they already exist)
+                $instrSourceDir = Join-Path $templatesDir "instructions"
+                if (Test-Path $instrSourceDir) {
+                    $instrTargetDir = Join-Path $agentDir "instructions"
+                    if (-not (Test-Path $instrTargetDir)) {
+                        New-Item -ItemType Directory -Path $instrTargetDir -Force | Out-Null
+                    }
+                    Get-ChildItem $instrSourceDir -Filter "*.instructions.md" | ForEach-Object {
+                        $targetFile = Join-Path $instrTargetDir $_.Name
+                        if (-not (Test-Path $targetFile)) {
+                            Copy-Item $_.FullName $targetFile
+                            Write-Host "  Installed $($_.Name) into $instrTargetDir" -ForegroundColor Green
+                        } else {
+                            Write-Host "  Skipped $($_.Name) (already exists)" -ForegroundColor Yellow
+                        }
+                    }
+                }
+            } else {
+                Write-Host "  templates/ directory not found — skipping instruction files" -ForegroundColor Yellow
+            }
+        }
     }
 }
 
@@ -127,6 +204,23 @@ if (-not $Uninstall) {
     Write-Host "  .<agent>/skills/spring-boot/"
     Write-Host "  ├── SKILL.md              # Entry point (agent reads this first)"
     Write-Host "  └── references/           # Detailed guides (read on demand)"
+    if ($WithInstructions -and ($SelectedAgents -contains "copilot")) {
+        Write-Host ""
+        Write-Host "Copilot extras (via -WithInstructions):"
+        Write-Host "  .github/copilot-instructions.md        # Appended spring-boot snippet"
+        Write-Host "  .github/instructions/                   # Path-specific rules"
+        Write-Host "  ├── java-spring.instructions.md         # Fires on *.java files"
+        Write-Host "  ├── pom.instructions.md                 # Fires on pom.xml"
+        Write-Host "  ├── docker.instructions.md              # Fires on Dockerfile"
+        Write-Host "  ├── test.instructions.md                # Fires on *Test.java, *IT.java"
+        Write-Host "  ├── properties.instructions.md          # Fires on application*.properties"
+        Write-Host "  └── liquibase.instructions.md           # Fires on db/changelog/**"
+    } elseif ($SelectedAgents -contains "copilot") {
+        Write-Host ""
+        Write-Host "Tip: For extra Copilot compliance, re-run with -WithInstructions"
+        Write-Host "     to add always-on rules and path-specific instruction files."
+        Write-Host "     See templates/README.md for details."
+    }
 }
 
 # Cleanup temp directory if we cloned from GitHub
